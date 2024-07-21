@@ -1,0 +1,232 @@
+
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>
+        宠物添加
+    </title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
+    <link rel="stylesheet" th:href="@{/css/main.css}" media="all">
+    <script type="text/javascript" th:src="@{/lib/loading/okLoading.js}"></script>
+    <!-- 引入ElementUI样式 -->
+    <link rel="stylesheet" th:href="@{/css/index.css}">
+    <style>
+        .imgs{display: none;}
+        .picture{display: none;}
+    </style>
+
+</head>
+<body>
+<div id="app">
+    <div class="x-nav">
+            <span class="layui-breadcrumb">
+              <a><cite>首页</cite></a>
+              <a><cite>业主信息管理</cite></a>
+              <a><cite>{{title}}</cite></a>
+            </span>
+        <a class="layui-btn layui-btn-small" style="line-height:1.6em;margin-top:3px;float:right"
+           href="javascript:location.replace(location.href);" title="刷新"><i class="layui-icon"
+                                                                            style="line-height:30px">ဂ</i></a>
+    </div>
+<div class="x-body">
+    <el-form :model="pet" :rules="rules" ref="buildingFormRef" label-width="120px" class="demo-ruleForm">
+        <el-form-item label="所属成员" prop="ownerName">
+            <el-autocomplete
+                    class="inline-input"
+                    v-model="pet.ownerName"
+                    :fetch-suggestions="querySearch"
+                    placeholder="请输入内容"
+                    :trigger-on-focus="false"
+                    @select="handleSelect" @blur.native.capture="findByOwnerId()"></el-autocomplete>
+        </el-form-item>
+        <el-form-item label="宠物名称" prop="name">
+            <el-input v-model="pet.name"></el-input>
+        </el-form-item>
+        <el-form-item label="宠物颜色" prop="color">
+            <el-input v-model="pet.color"></el-input>
+        </el-form-item>
+        <el-form-item label="收养时间" prop="adoptTime">
+            <el-date-picker
+                    v-model="pet.adoptTime"
+                    type="date"
+                    placeholder="选择日期">
+            </el-date-picker>
+        </el-form-item>
+        <el-form-item label="宠物照片" prop="picture">
+            <el-upload
+                    class="upload-demo"
+                    action="/estate/fileupload"
+                    :on-preview="handlePreview"
+                    :on-remove="handleRemove"
+                    :on-success="handleSuccess"
+                    :file-list="fileList"
+                    list-type="picture">
+                <el-button size="small" type="primary">点击上传</el-button>
+                <div slot="tip" class="el-upload__tip">只能上传jpg/png文件，且不超过10M</div>
+            </el-upload>
+        </el-form-item>
+        <el-form-item label="描述" prop="remark">
+            <el-input type="textarea" v-model="pet.remark"></el-input>
+        </el-form-item>
+        <el-form-item style="display:none">
+            <el-input v-model="pet.ownerId"></el-input>
+        </el-form-item>
+        <el-form-item>
+            <el-button type="primary" @click="save()" style="text-align: center">保存</el-button>
+            <el-button @click="clearAll()" style="text-align: center">重置</el-button>
+        </el-form-item>
+    </el-form>
+</div>
+</div>
+<script th:src="@{/lib/layui/layui.js}" charset="utf-8"></script>
+<script th:src="@{/js/x-layui.js}" charset="utf-8"></script>
+<script th:src="@{/js/jquery.min.js}" charset="utf-8"></script>
+<!--导入Vue依赖包-->
+<script th:src="@{/js/vue.js}" charset="utf-8"></script>
+<!-- 引入Element组件库 -->
+<script th:src="@{/js/index.js}"></script>
+<!--导入Axios依赖包-->
+<script th:src="@{/js/axios.js}" charset="utf-8"></script>
+
+<script type="text/javascript">
+    var token='[[${session.estateManager}]]';
+    var app = new Vue({
+        el: "#app",
+        data: {
+            restaurants: [],
+            title: "添加宠物管理",
+            pet: {id: "",ownerName: "",picture:"",ownerId:""},
+            fileList: [],
+            rules: {
+                ownerName: [
+                    {required: true, message: '请输入所属成员', trigger: 'blur'}
+                ],
+                name: [
+                    {required: true, message: '请输入宠物名称', trigger: 'blur'}
+                ],
+                color: [
+                    {required: true, message: '请输入宠物颜色', trigger: 'blur'}
+                ],
+                picture:[
+                    { required: true, message: '请上传宠物缩略图', trigger: 'change' }
+                ],
+                adoptTime:[
+                    { required: true, message: '请选择收养日期', trigger: 'change' }
+                ]
+            }
+        },
+        methods: {
+            findByOwnerId(){
+                axios.get("/home/addById?ownerName=" + this.pet.ownerName).then((res) => {
+                    this.pet.ownerId = res.data.data+"";
+                });
+            },
+            showOwner() {
+                axios.get("/owner/find",{headers:{
+                        token:token
+                    }}).then((res) => {
+                    for (var i = 0; i < res.data.data.length; i++) {
+                        var obj = {value: ""};
+                        obj.value = res.data.data[i].name;
+                        this.restaurants.push(obj);
+                    }
+                });
+            },
+            querySearch(queryString, cb) {
+                var restaurants = this.restaurants;
+                var results = queryString ? restaurants.filter(this.createFilter(queryString)) : restaurants;
+                // 调用 callback 返回建议列表的数据
+                cb(results);
+            },
+            createFilter(queryString) {
+                return (restaurant) => {
+                    return (restaurant.value.toLowerCase().indexOf(queryString.toLowerCase()) === 0);
+                };
+            },
+            handleSelect(item) {
+                console.log(item);
+            },
+            findById() {
+                axios.get("/pet/findById?id=" + this.pet.id).then((res) => {
+                    this.pet = res.data.data;
+                    this.fileList.push({url: "http://localhost" + this.pet.picture});
+                });
+            },
+            handleSuccess(response, file, fileList){
+                this.pet.picture=response.data;
+            },
+            handleRemove() {
+                axios.get("/estate/delfile?fileName=" + this.pet.picture).then((res) => {
+                    app.pet.picture = "";
+                    if (res.data.flag) {
+                        app.fileList = [];
+                        this.$message({
+                            message: '图片删除成功',
+                            type: 'success'
+                        });
+                    }
+                });
+            },
+            handlePreview(file) {
+                console.log(file);
+            },
+            handleExceed(files, fileList) {
+                this.$message.warning(`当前限制选择 1 个文件，本次选择了 ${files.length} 个文件，共选择了 ${files.length + fileList.length} 个文件`);
+            },
+            //表达重置
+            clearAll() {
+                this.$refs.buildingFormRef.resetFields();
+                if (this.fileList.length > 0) {
+                    this.handleRemove();
+                }
+            },
+            save() {
+                var method = "";
+                if (this.pet.id != null) {
+                    method = "update"
+                } else {
+                    method = "add"
+                }
+                axios.post("/pet/" + method, this.pet).then((res) => {
+                    if (res.data.flag) {
+                        this.$message({
+                            message: res.data.message,
+                            type: 'success'
+                        });
+                    }
+                });
+            },
+            getQueryString(name) {
+                let reg = `(^|&)${name}=([^&]*)(&|$)`
+                let r = window.location.search.substr(1).match(reg);
+                if (r != null) return unescape(r[2]);
+                return null;
+            }
+        },
+        created: function () {
+            layui.use(['element', 'layer', 'form'], function () {
+                $ = layui.jquery;//jquery
+                lement = layui.element();//面包导航
+                layer = layui.layer;//弹出层
+                form = layui.form();
+                okLoading.close($);
+            });
+            //获取父页面传递参数，小区ID
+            this.pet.id = this.getQueryString("id");
+            //根据小区ID获取小区对象，进行数据回显
+            if (this.pet.id != null && this.pet.id != '') {
+                this.title = "修改宠物管理";
+                this.findById();
+            }
+            this.showOwner();
+        }
+    });
+</script>
+</body>
+</html>

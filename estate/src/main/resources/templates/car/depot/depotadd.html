@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>
+        车辆添加
+    </title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
+    <link rel="stylesheet" th:href="@{/css/main.css}" media="all">
+    <script type="text/javascript" th:src="@{/lib/loading/okLoading.js}"></script>
+    <!-- 引入ElementUI样式 -->
+    <link rel="stylesheet" th:href="@{/css/index.css}">
+    <style>
+        .imgs {
+            display: none;
+        }
+
+        .picture {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <div class="x-nav">
+            <span class="layui-breadcrumb">
+              <a><cite>首页</cite></a>
+              <a><cite>车辆</cite></a>
+              <a><cite>{{title}}</cite></a>
+            </span>
+        <a class="layui-btn layui-btn-small" style="line-height:1.6em;margin-top:3px;float:right"
+           href="javascript:location.replace(location.href);" title="刷新"><i class="layui-icon"
+                                                                            style="line-height:30px">ဂ</i></a>
+    </div>
+    <div class="x-body">
+        <el-form :model="depot" :rules="rules" ref="buildingFormRef" label-width="120px" class="demo-ruleForm">
+            <el-form-item label="所属小区" prop="communityName">
+                <el-select v-model="depot.communityName" filterable placeholder="--请选择所属小区--">
+                    <el-option
+                            v-for="item in communityList"
+                            :key="item.index"
+                            :label="item.name"
+                            :value="item.name" @click.native="houseFindAllByName(depot.communityName)">
+                    </el-option>
+                </el-select>
+            </el-form-item>
+
+            <el-form-item label="编号" prop="depotCode">
+                    <el-input v-model="depot.depotCode"></el-input>
+                </el-form-item>
+            <el-form-item label="名称" prop="depotName">
+                <el-input v-model="depot.depotName"></el-input>
+            </el-form-item>
+            <el-form-item label="类型" prop="depotType">
+                <el-select v-model="depot.depotType" filterable placeholder="--请选择类型--">
+                    <el-option
+                            v-for="item in findByDepotType"
+                            :key="item.index"
+                            :label="item.id"
+                            :value="item.value">
+                    </el-option>
+                </el-select>
+            </el-form-item>
+
+            <el-form-item label="外部编码" prop="outsideCode">
+                <el-input v-model="depot.outsideCode"></el-input>
+            </el-form-item>
+
+            <el-form-item label="创建时间" prop="createTime">
+                <el-date-picker
+                        v-model="depot.createTime"
+                        type="date"
+                        placeholder="选择日期">
+                </el-date-picker>
+            </el-form-item>
+
+            <el-form-item>
+                <el-input v-model="depot.communityId" style="display:none"></el-input>
+            </el-form-item>
+
+            <el-form-item>
+                <el-button type="primary" @click="save()" style="text-align: center">保存</el-button>
+                <el-button @click="clearAll()" style="text-align: center">重置</el-button>
+            </el-form-item>
+        </el-form>
+    </div>
+</div>
+<script th:src="@{/lib/layui/layui.js}" charset="utf-8"></script>
+<script th:src="@{/js/x-layui.js}" charset="utf-8"></script>
+<script th:src="@{/js/jquery.min.js}" charset="utf-8"></script>
+<!--导入Vue依赖包-->
+<script th:src="@{/js/vue.js}" charset="utf-8"></script>
+<!-- 引入Element组件库 -->
+<script th:src="@{/js/index.js}"></script>
+<!--导入Axios依赖包-->
+<script th:src="@{/js/axios.js}" charset="utf-8"></script>
+
+<script type="text/javascript">
+    var token='[[${session.estateManager}]]';
+    var app = new Vue({
+        el: "#app",
+        data: {
+            restaurants: [],
+            findByDepotType:[{id:'地上停车场',value:'1'},{id:'地下停车场',value:'2'}],
+            title: "添加停车场管理",
+            depot: {id: "",depotName: ""},
+            fileList: [],
+            communityList:[] ,
+            rules: {
+                depotName: [
+                    {required: true, message: '请输入编号', trigger: 'blur'}
+                ],
+                depotCode: [
+                    {required: true, message: '请输入编号', trigger: 'blur'}
+                ],
+                depotType: [
+                    {required: true, message: '请输入类型', trigger: 'blur'}
+                ],
+                outsideCode:[
+                    { required: true, message: '请输入外部编码', trigger: 'blur' }
+                ]
+            }
+        },
+        methods: {
+            houseFindAllByCommunityName() {
+                axios.get("/community/find").then((res) => {
+                    this.communityList = res.data.data;
+                });
+            },
+            houseFindAllByName(communityName){
+                axios.get("/home/addById?communityName=" + communityName).then((res) => {
+                    this.depot.communityId = res.data.data+"";
+                });
+            },
+            querySearch(queryString, cb) {
+                var restaurants = this.restaurants;
+                var results = queryString ? restaurants.filter(this.createFilter(queryString)) : restaurants;
+                // 调用 callback 返回建议列表的数据
+                cb(results);
+            },
+            createFilter(queryString) {
+                return (restaurant) => {
+                    return (restaurant.value.toLowerCase().indexOf(queryString.toLowerCase()) === 0);
+                };
+            },
+            handleSelect(item) {
+                console.log(item);
+            },
+            findById() {
+                axios.get("/depot/findById?id=" + this.depot.id).then((res) => {
+                    this.depot = res.data.data;
+                    console.log(res)
+                });
+            },
+            //表达重置
+            clearAll() {
+                this.$refs.buildingFormRef.resetFields();
+                if (this.fileList.length > 0) {
+                    this.handleRemove();
+                }
+            },
+            save() {
+                    var method = "";
+                if (this.depot.id != null) {
+                    method = "update"
+                } else {
+                    method = "add"
+                }
+                axios.post("/depot/"+method , this.depot).then((res) => {
+                    if (res.data.flag) {
+                        this.$message({
+                            message: res.data.message,
+                            type: 'success'
+                        });
+                    }
+                });
+            },
+            getQueryString(name) {
+                let reg = `(^|&)${name}=([^&]*)(&|$)`
+                let r = window.location.search.substr(1).match(reg);
+                if (r != null) return unescape(r[2]);
+                return null;
+            }
+        },
+        created: function () {
+            layui.use(['element', 'layer', 'form'], function () {
+                $ = layui.jquery;//jquery
+                lement = layui.element();//面包导航
+                layer = layui.layer;//弹出层
+                form = layui.form();
+                okLoading.close($);
+            });
+            //获取父页面传递参数，小区ID
+            this.depot.id = this.getQueryString("id");
+            console.log(this.getQueryString("id"))
+            //根据小区ID获取小区对象，进行数据回显
+            if (this.depot.id != null && this.depot.id != '') {
+                this.title = "修改停车场管理";
+                this.findById();
+            }
+            this.houseFindAllByCommunityName();
+        }
+    });
+</script>
+
+</body>
+</html>

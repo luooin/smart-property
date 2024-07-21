@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.es.estatemanagement.mapper.EstateRoleMapper">
+    <resultMap id="RoleMap" type="com.es.estatemanagement.domain.EstateRole" autoMapping="true"></resultMap>
+
+    <!-- 用于select查询公用抽取的列 -->
+    <sql id="columns">
+        role_id,role_name,role_desc,role_describe,`status`,is_deleted
+    </sql>
+
+    <select id="selectPosts" resultMap="RoleMap">
+        select
+        <include refid="columns"/>
+        from tb_estate_role
+        <where>
+            <if test="ew!=null">
+                ${ew.sqlSegment}
+            </if>
+        </where>
+        order by role_id desc
+    </select>
+</mapper>

@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>
+        审核列表
+    </title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
+    <link rel="stylesheet" th:href="@{/css/main.css}" media="all">
+    <script type="text/javascript" th:src="@{/lib/loading/okLoading.js}"></script>
+    <!-- 引入ElementUI样式 -->
+    <link rel="stylesheet" th:href="@{/css/index.css}">
+    <style>
+        .imgs {
+            display: none;
+        }
+
+        .picture {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="app">
+<!--    <div class="x-nav">-->
+<!--            <span class="layui-breadcrumb">-->
+<!--              <a><cite>首页</cite></a>-->
+<!--              <a><cite>车辆</cite></a>-->
+<!--              <a><cite>{{title}}</cite></a>-->
+<!--            </span>-->
+<!--        <a class="layui-btn layui-btn-small" style="line-height:1.6em;margin-top:3px;float:right"-->
+<!--           href="javascript:location.replace(location.href);" title="刷新"><i class="layui-icon"-->
+<!--                                                                            style="line-height:30px">ဂ</i></a>-->
+<!--    </div>-->
+    <div class="x-body">
+<!--        <el-descriptions title="用户信息">-->
+<!--            <el-descriptions-item label="用户名">kooriookami</el-descriptions-item>-->
+<!--            <el-descriptions-item label="手机号">18100000000</el-descriptions-item>-->
+<!--            <el-descriptions-item label="居住地">苏州市</el-descriptions-item>-->
+<!--            <el-descriptions-item label="备注">-->
+<!--                <el-tag size="small">学校</el-tag>-->
+<!--            </el-descriptions-item>-->
+<!--            <el-descriptions-item label="联系地址">江苏省苏州市吴中区吴中大道 1188 号</el-descriptions-item>-->
+<!--        </el-descriptions>-->
+        <el-form :model="parkingapplication" :rules="rules" ref="buildingFormRef" label-width="120px" class="demo-ruleForm">
+            <el-form-item label="申请人" prop="proposer">
+                <el-autocomplete
+                        class="inline-input"
+                        v-model="parkingapplication.proposer"
+                        :fetch-suggestions="querySearch"
+                        placeholder="请输入申请人"
+                        :trigger-on-focus="false"
+                        @select="handleSelect" @focus.native.capture="showOwnerTelephone('sss')"
+                        @blur.native.capture="showOwnerTelephone('')"></el-autocomplete>
+                <!--                <el-input v-model="home.ownerName"></el-input>-->
+            </el-form-item>
+
+            <el-form-item label="车牌号" prop="carCode">
+                    <el-input v-model="parkingapplication.carCode"></el-input>
+                </el-form-item>
+            <el-form-item label="汽车品牌" prop="carBrand">
+                <el-input v-model="parkingapplication.carBrand"></el-input>
+            </el-form-item>
+            <el-form-item label="车辆类型" prop="typeName">
+                <el-select v-model="parkingapplication.typeName" filterable placeholder="--请选择类型--">
+                    <el-option
+                            v-for="item in findByCarTypeName"
+                            :key="item.index"
+                            :label="item.typeName"
+                            :value="item.typeName">
+                    </el-option>
+                </el-select>
+            </el-form-item>
+
+            <el-form-item label="颜色" prop="carColor">
+                <el-input v-model="parkingapplication.carColor"></el-input>
+            </el-form-item>
+
+            <el-form-item label="起租时间" prop="rentTime">
+                <el-date-picker
+                        v-model="parkingapplication.rentTime"
+                        type="date"
+                        placeholder="选择日期">
+                </el-date-picker>
+            </el-form-item>
+            <el-form-item label="结租时间" prop="matchingTime">
+                <el-date-picker
+                        v-model="parkingapplication.matchingTime"
+                        type="date"
+                        placeholder="选择日期">
+                </el-date-picker>
+            </el-form-item>
+
+            <!-- 未实现功能 -->
+<!--            <el-form-item label="申请人" prop="proposer">-->
+<!--                <el-input v-model="parkingapplication.proposer" style="width:40%"></el-input>-->
+<!--                &nbsp;&nbsp;&nbsp;&nbsp;   &nbsp;&nbsp;-->
+<!--                <el-button type="primary" @click="owner('选择业主','owner.html','1000','600')">选择业主</el-button>-->
+<!--            </el-form-item>-->
+
+
+
+
+            <el-form-item label="申请人电话" prop="telephone">
+                <el-input v-model="parkingapplication.telephone"></el-input>
+            </el-form-item>
+<!--            <el-form-item label="小区Id" prop="communityId">-->
+<!--                <el-input v-model="parkingapplication.communityId"></el-input>-->
+<!--            </el-form-item>-->
+
+            <el-form-item label="备注" prop="remarks">
+                <el-input v-model="parkingapplication.remarks"></el-input>
+            </el-form-item>
+
+
+<!--            <el-form-item label="审核结果" prop="auditResult">-->
+<!--                <el-input v-model="parkingapplication.auditResult"></el-input>-->
+<!--            </el-form-item>-->
+
+            <el-form-item label="审核结果" prop="auditResult">
+                <el-select v-model="parkingapplication.auditResult" filterable placeholder="--请选择审核结果--">
+                    <el-option
+                            v-for="item in findByDepotType"
+                            :key="item.index"
+                            :label="item.id"
+                            :value="item.value" @click.native="choose_a_parking_space(item.value)">
+                    </el-option>
+                </el-select>
+            </el-form-item>
+
+            <i v-if="bool==true">
+
+                <el-form-item label="选择车位" prop="carParkingName">
+                    <el-input v-model="parkingapplication.carParkingName"></el-input>
+                </el-form-item>
+                <el-form-item label="" prop="parkingId" style="display:none">
+                    <el-input v-model="parkingapplication.parkingId"></el-input>
+                </el-form-item>
+                <el-form-item label="" prop="parkingState" style="display:none">
+                    <el-input v-model="parkingapplication.parkingState"></el-input>
+                </el-form-item>
+            </i>
+            <el-form-item label="车位id" prop="carId" style="display:none">
+                <el-input v-model="parkingapplication.carId"></el-input>
+            </el-form-item>
+
+
+            <el-form-item label="审核意见" prop="auditOpinion">
+                <el-input v-model="parkingapplication.auditOpinion"></el-input>
+            </el-form-item>
+
+
+            <el-form-item>
+                <el-button type="primary" @click="save()" style="text-align: center">保存</el-button>
+                <el-button @click="clearAll()" style="text-align: center">重置</el-button>
+            </el-form-item>
+        </el-form>
+    </div>
+</div>
+<script th:src="@{/lib/layui/layui.js}" charset="utf-8"></script>
+<script th:src="@{/js/x-layui.js}" charset="utf-8"></script>
+<script th:src="@{/js/jquery.min.js}" charset="utf-8"></script>
+<!--导入Vue依赖包-->
+<script th:src="@{/js/vue.js}" charset="utf-8"></script>
+<!-- 引入Element组件库 -->
+<script th:src="@{/js/index.js}"></script>
+<!--导入Axios依赖包-->
+<script th:src="@{/js/axios.js}" charset="utf-8"></script>
+
+<script type="text/javascript">
+    var token='[[${session.estateManager}]]';
+    var app = new Vue({
+        el: "#app",
+        data: {
+            bool:false,
+            restaurants: [],
+            title: "车位申请",
+            parkingapplication: {id: "",carCode:"",carBrand:"",typeName:"",carColor:"",rentTime:"",matchingTime:"",proposerId:"",
+                proposer:"", telephone:"",auditResult:"",auditOpinion:"",remarks:"",communityName:"",communityId:"",buildingName:"",
+                buildingId:""  },
+            fileList: [],
+            communityList:[] ,
+            findByName: [],
+            findByCarTypeName:[],
+            findByDepotType:[{id:'通过',value:'通过'},{id:'不通过',value:'不通过'}],
+            rules: {
+                depotName: [
+                    {required: true, message: '请输入编号', trigger: 'blur'}
+                ],
+                depotCode: [
+                    {required: true, message: '请输入编号', trigger: 'blur'}
+                ],
+                depotType: [
+                    {required: true, message: '请输入类型', trigger: 'blur'}
+                ],
+                outsideCode:[
+                    { required: true, message: '请输入外部编码', trigger: 'blur' }
+                ]
+            }
+        },
+        methods: {
+
+            // //根据车牌号查询id
+            // carOwnerIdBiz(){
+            //     axios.get("/parkingusage/carOwnerId?carNumber=" + this.parkingapplication.carCode).then((res) => {
+            //         console.log(res);
+            //         // this.parkingapplication.proposerId = res.data.data;
+            //     });
+            // },
+            // //根据停车名称查询id
+            // parkingName(){
+            //     axios.get("/parkingusage/parkingName?name=" + this.parkingapplication.proposer).then((res) => {
+            //         // this.parkingapplication.proposerId = res.data.data;
+            //     });
+            // },
+            //审核结果通过后后面的内容
+            choose_a_parking_space(itemValue){
+                if(itemValue=="通过"){
+                    this.bool=true;
+                }else {
+                    this.bool=false;
+                }
+            },
+            //申请人方法
+            showOwner() {
+                axios.get("/owner/find",{headers:{
+                        token:token
+                    }}).then((res) => {
+                    for (var i = 0; i < res.data.data.length; i++) {
+                        var obj = {value: "", telephone: ""};
+                        obj.value = res.data.data[i].name;
+                        obj.telephone = res.data.data[i].telephone;
+                        obj.communityId=res.data.data[i].communityId;
+                        this.restaurants.push(obj);
+                    }
+                });
+            },
+            querySearch(queryString, cb) {
+                var restaurants = this.restaurants;
+                var results = queryString ? restaurants.filter(this.createFilter(queryString)) : restaurants;
+                // 调用 callback 返回建议列表的数据
+                cb(results);
+            },
+
+            createFilter(queryString) {
+                return (restaurant) => {
+                    return (restaurant.value.toLowerCase().indexOf(queryString.toLowerCase()) === 0);
+                };
+            },
+            showOwnerTelephone(ifs) {
+                if (ifs != '') {
+                    this.parkingapplication.telephone = "";
+                    this.parkingapplication.communityId="";
+                } else {
+                    for (var i = 0; i < this.restaurants.length; i++) {
+                        if (this.parkingapplication.proposer == this.restaurants[i].value) {
+                            this.parkingapplication.telephone = this.restaurants[i].telephone;
+                            this.parkingapplication.communityId = this.restaurants[i].communityId;
+                        }
+                    }
+                    this.ownerFindAllByName();
+                }
+            },
+            handleSelect(item) {
+
+            },
+
+            ownerFindAllByName() {
+                axios.get("/home/addById?ownerName=" + this.parkingapplication.proposer).then((res) => {
+                    this.parkingapplication.proposerId = res.data.data;
+                });
+            },
+            houseFindAllByName(communityName) {
+                axios.get("/building/findByName?communityName=" + communityName).then((res) => {
+                    this.findByName = res.data.data;
+                });
+                axios.get("/home/addById?communityName=" + communityName).then((res) => {
+                    this.parkingapplication.communityId = res.data.data+"";
+                });
+                if (this.parkingapplication.buildingId != "" || this.parkingapplication.buildingId != 0) {
+                    axios.get("/home/addById?buildingName=" + this.parkingapplication.buildingName + "&communityName=" + communityName).then((res) => {
+                        this.parkingapplication.buildingId = res.data.data+"";
+                    });
+                }
+            },
+            buildingFindAllByName(buildingName) {
+                axios.get("/home/addById?buildingName=" + buildingName + "&communityName=" + this.parkingapplication.communityName).then((res) => {
+                    this.parkingapplication.buildingId = res.data.data;
+                });
+            },
+
+
+            //选择业主功能
+            // owner(title, url, w, h) {
+            //     this.x_admin_show(title, url, w, h);
+            // },
+            // x_admin_show(title, url, width, height) {
+            //     if (title == null || title == '') {
+            //         title = false;
+            //     }
+            //     ;
+            //     if (url == null || url == '') {
+            //         url = "404.html";
+            //     }
+            //     ;
+            //     if (width == null || width == '') {
+            //         width = 800;
+            //     }
+            //     ;
+            //     if (height == null || height == '') {
+            //         height = ($(window).height() - 50);
+            //     }
+            //     ;
+            //
+            //     layer.open({
+            //         type: 2,
+            //         area: [width + 'px', height + 'px'],
+            //         fix: false, //不固定
+            //         maxmin: true,
+            //         shadeClose: true,
+            //         shade: 0.4,
+            //         title: title,
+            //         content: url,
+            //         cancel: function (index, layero) {
+            //             //使用右上角x关闭弹窗层，回调方法，重新加载页面数据，让修改或者新增的数据立马显示在页面上
+            //             app.search();
+            //         }
+            //     });
+            // },
+
+            //显示所有车辆类型
+            carTypeFind() {
+                axios.get("/parkingapplication/carTypeFind").then((res) => {
+                    this.findByCarTypeName = res.data.data;
+                });
+            },
+
+            //根据车位Id查询详细信息
+            findById() {
+                axios.get("/parkingapplication/findById?id=" + this.parkingapplication.id).then((res) => {
+                    this.parkingapplication = res.data.data;
+                });
+            },
+
+            //表达重置
+            clearAll() {
+                this.$refs.buildingFormRef.resetFields();
+                if (this.fileList.length > 0) {
+                    this.handleRemove();
+                }
+            },
+            save() {
+                    var method = "";
+                if (this.parkingapplication.id != null) {
+                    method = "update"
+                } else {
+                    method = "add"
+                }
+                axios.post("/parkingapplication/"+method , this.parkingapplication).then((res) => {
+                    if (res.data.flag) {
+                        this.$message({
+                            message: res.data.message,
+                            type: 'success'
+                        });
+                    }
+                });
+            },
+            getQueryString(name) {
+                let reg = `(^|&)${name}=([^&]*)(&|$)`
+                let r = window.location.search.substr(1).match(reg);
+                if (r != null) return unescape(r[2]);
+                return null;
+            }
+        },
+        created: function () {
+            layui.use(['element', 'layer', 'form'], function () {
+                $ = layui.jquery;//jquery
+                lement = layui.element();//面包导航
+                layer = layui.layer;//弹出层
+                form = layui.form();
+                okLoading.close($);
+            });
+            //获取父页面传递参数，小区ID
+            this.parkingapplication.id = this.getQueryString("id");
+            //根据小区ID获取小区对象，进行数据回显
+            if (this.parkingapplication.id != null && this.parkingapplication.id != '') {
+                this.title = "修改申请车位";
+                this.findById();
+            }
+            this.showOwner();
+            this.carTypeFind();
+
+        }
+    });
+</script>
+
+</body>
+</html>

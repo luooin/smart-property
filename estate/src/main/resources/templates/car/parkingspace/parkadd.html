@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>
+        车位添加
+    </title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
+    <link rel="stylesheet" th:href="@{/css/main.css}" media="all">
+    <link rel="stylesheet" th:href="@{/css/bootstrap.css}">
+    <script type="text/javascript" th:src="@{/lib/loading/okLoading.js}"></script>
+    <!-- 引入ElementUI样式 -->
+    <link rel="stylesheet" th:href="@{/css/index.css}">
+    <style>
+        .imgs{display: none;}
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="x-body">
+<!--        <h1>黄小狗</h1>-->
+<!--        <el-form :model="depot" :rules="rules" ref="buildingFormRef" label-width="120px" class="demo-ruleForm">-->
+                <el-form :model="parking":rules="rules" ref="parkingFormRef" lable-width="120px" class="demo-ruleForm">
+
+                    <el-form-item label="所属停车场" prop="depotName">
+                        <el-input v-model="parking.depotName"></el-input>
+                    </el-form-item>
+
+                    <el-form-item label="所属小区" prop="communityName">
+                        <el-input v-model="parking.communityName"></el-input>
+                    </el-form-item>
+
+                    <el-form-item label="车位编号" prop="code">
+                        <el-input v-model="parking.code"></el-input>
+                    </el-form-item>
+
+                    <el-form-item label="车位名称" prop="name">
+                        <el-input v-model="parking.name"></el-input>
+                    </el-form-item>
+
+                    <el-form-item label="状态" prop="status">
+                        <el-radio v-model="parking.status" label="1" >使用中</el-radio>
+                        <el-radio v-model="parking.status" label="2" >闲置中</el-radio>
+                    </el-form-item>
+
+                    <el-form-item  prop="depotId" style="display:none">
+                        <el-input v-model="parking.depotId"></el-input>
+                    </el-form-item>
+
+
+                    <el-form-item style="display:none">
+                        <el-input v-model="parking.carCode"></el-input>
+                    </el-form-item>
+
+                    <el-form-item>
+                        <el-button type="primary" @click="save()" style="text-align: center">保存</el-button>
+                        <el-button @click="clearAll()" style="text-align: center">重置</el-button>
+                    </el-form-item>
+                </el-form>
+    </div>
+
+</div>
+
+
+
+<script th:src="@{/lib/layui/layui.js}" charset="utf-8"></script>
+<script th:src="@{/js/x-layui.js}" charset="utf-8"></script>
+<script th:src="@{/js/jquery.js}" charset="utf-8"></script>
+<!--导入Vue依赖包-->
+<script th:src="@{/js/vue.js}" charset="UTF-8"></script>
+<!-- 引入Element组件库 -->
+<script th:src="@{/js/index.js}"></script>
+<!--导入Axios依赖包-->
+<script th:src="@{/js/axios.js}"></script>
+<script type="text/javascript">
+    var app = new Vue({
+        el:"#app",
+        data: {
+            title: "添加车位",
+            parking: {id: ""},
+            car:{carNumber:""},
+            findByDepotName: [],
+                fileList:[],
+                rules: {
+                    communityName: [
+                        { required: true, message: '请选择所属小区名称', trigger: 'blur' }
+                    ],
+                    name:[
+                        {required:true,message:'请输入车位的名称', trigger: 'blur'}
+                    ],
+                    status:[
+                        { required: true, message: '请选择车位状态', trigger: 'change' }
+                    ]
+                }
+        },
+        methods:{
+
+            // ownerName(){
+            //
+            // },
+
+            depotFindAllByDepotName() {
+                axios.get("/depot/find").then((res) => {
+                    console.log(res);
+                    this.findByDepotName = res.data.data;
+                });
+            },
+            findById(){
+                axios.get("/parking/findById?id="+this.parking.id).then((res)=>{
+                   this.parking = res.data.data;
+                    axios.get("/parking/ownerName?carNumber="+this.parking.carCode).then((res)=>{
+                        this.car=res.data.data;
+                    })
+                   // console.log(this.parking)
+                   this.fileList.push({url:"http://localhost"+this.community.thumbnail});
+                });
+
+            },
+            //表达重置
+            clearAll() {
+                this.$refs.parkingFormRef.resetFields();
+                if(this.fileList.length>0) {
+                    this.handleRemove();
+                }
+            },
+            save() {
+                var method = "";
+                if(this.parking.id != null){
+                    method = "update"
+                } else {
+                    method = "add"
+                }
+                axios.post("/parking/"+method,this.parking).then((res)=>{
+                    if(res.data.flag){
+                        this.$message({
+                            message:res.data.message,
+                            type:'success'
+                        });
+                    }
+                });
+            },
+            getQueryString(name){
+                let reg = `(^|&)${name}=([^&]*)(&|$)`
+                let r = window.location.search.substr(1).match(reg);
+                if (r != null) return unescape(r[2]); return null;
+            }
+        },
+
+
+        created:function(){
+            layui.use(['element','layer','form'],function () {
+                $ = layui.jquery;  //jquery
+                lement = layui.element();  //面包导航
+                layer = layui.layer;       //弹出层
+                form = layui.form();
+                okLoading.close($);
+            })
+            //获取父页面传递的参数，小区id
+            this.parking.id = this.getQueryString("id");
+            //根据小区ID获取小区对象，进行数据回显
+            if(this.parking.id != null && this.parking.id != ''){
+                this.title="修改车位";
+                this.findById();
+                // this.ownerName();
+
+            }
+            this.depotFindAllByDepotName();
+        }
+
+    });
+</script>
+
+
+</body>
+</html>

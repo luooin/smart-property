@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>
+        疫情上报
+    </title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
+    <link rel="stylesheet" th:href="@{/css/main.css}" media="all">
+    <script type="text/javascript" th:src="@{/lib/loading/okLoading.js}"></script>
+    <link rel="stylesheet" th:href="@{/css/bootstrap.css}">
+    <!--导入ElementUI样式列表，css样式一般都在页面头部-->
+    <link rel="stylesheet" th:href="@{/css/index.css}">
+</head>
+<body>
+<div class="x-nav">
+            <span class="layui-breadcrumb">
+              <a><cite>首页</cite></a>
+              <a><cite>疫情管理</cite></a>
+              <a><cite>疫情上报</cite></a>
+            </span>
+    <a class="layui-btn layui-btn-small" style="line-height:1.6em;margin-top:3px;float:right"
+       href="javascript:location.replace(location.href);" title="刷新"><i class="layui-icon"
+                                                                        style="line-height:30px">ဂ</i></a>
+</div>
+<div class="x-body" id="app">
+    <div>
+        <span class="demonstration">时间范围</span>
+        <el-date-picker
+                @change="dateChange"
+                v-model="selectDate"
+                type="daterange"
+                range-separator="-"
+                start-placeholder="开始日期"
+                end-placeholder="结束日期"
+                :picker-options="pickerOptions">
+        </el-date-picker>
+        <span class="demonstration">搜索关键字</span>
+        <el-input v-model="searchMap.name" style="width: 20%" placeholder="请输入登记人名称"></el-input>
+        <el-button type="primary" plain @click="searchMap.pageNum=1;search()">搜索</el-button>
+    </div>
+    <br>
+    <el-dialog title="导入问卷" :visible.sync="dialogVisible" width="30.5%">
+        <el-upload
+                class="upload-demo"
+                drag
+                action="/surveyEscalation/import"
+                :file-list="fileList"
+                :on-preview="handlePreview"
+                :on-change="handleChange"
+                auto-upload
+                multiple="false">
+            <i class="el-icon-upload"></i>
+            <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
+            <div class="el-upload__tip" slot="tip">仅允许导入xls、xlsx格式文件。</div>
+        </el-upload>
+        <span slot="footer" class="dialog-footer">
+        			        <el-button @click="dialogVisible = false" size="small"
+                                       icon="el-icon-refresh-right">取 消</el-button>
+        			      </span>
+    </el-dialog>
+    <xblock>
+        <button class="layui-btn layui-btn-danger" @click="admin_add('疫情登记','survey_escalation_add.html')">
+            <i class="layui-icon">&#xe608;</i>疫情登记
+        </button>
+        <el-button type="info" @click="dialogVisible = true" style="margin-left: 16px;" plain>
+            <i class="el-icon-upload2 el-icon--left"></i>导入
+        </el-button>
+        <el-button type="warning" style="margin-left: 16px;" @click="exports" plain>
+            <i class="el-icon-download el-icon--left"></i>导出
+        </el-button>
+        <span class="x-right" style="line-height:40px">共有数据：<span class="layui-badge">{{total}}</span> 条</span>
+    </xblock>
+    <table class="layui-table">
+        <thead>
+        <tr>
+            <th>
+                项目
+            </th>
+            <th>
+                登记人
+            </th>
+            <th>
+                题目
+            </th>
+            <th>
+                内容
+            </th>
+            <th>
+                类型
+            <th>
+                时间
+            </th>
+        </tr>
+        </thead>
+        <tbody id="x-img">
+        <tr v-for="(escalation,index) in surveyEscalation">
+            <td>{{escalation.projectName}}</td>
+            <td>{{escalation.name}}</td>
+            <td>{{escalation.dataQuestion}}</td>
+            <td>{{escalation.choiceText}}</td>
+            <td>{{escalation.projectType}}</td>
+            <td>{{dateFormat(escalation.createTime)}}</td>
+        </tr>
+        </tbody>
+    </table>
+    <el-pagination
+            background
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+            :page-size="searchMap.pageSize"
+            layout="prev, pager, next,sizes"
+            :page-sizes="[5,10,20]"
+            style="text-align: right;"
+            :total="total">
+    </el-pagination>
+</div>
+<script th:src="@{/lib/layui/layui.js}" charset="utf-8"></script>
+<!--js脚本一般是放在页面尾部-->
+<!--Vue js脚本-->
+<script th:src="@{/js/vue.js}" charset="utf-8"></script>
+<!--引入ElementUI组件库-->
+<script th:src="@{/js/index.js}" charset="utf-8"></script>
+<!--引入Axios js脚本-->
+<script th:src="@{/js/axios.js}" charset="utf-8"></script>
+<!--引入时间插件包Momentjs-->
+<script th:src="@{/js/moment.min.js}" charset="utf-8"></script>
+<script>
+    var app = new Vue({
+        el: "#app",//声明当前Vue在页面的作用域
+        data: {
+            fileList: [],
+            multiple: false, // 不支持多选
+            formData: "",
+            dialogVisible: false,
+            checkedIDs: [],
+            surveyEscalation: [],
+            total: 10,
+            searchMap: {"startTime": "", "endTime": "", "name": "", "pageNum": 1, "pageSize": 5},
+            selectDate: ['', ''],
+            pickerOptions: {
+                shortcuts: [{
+                    text: '最近一周',
+                    onClick(picker) {
+                        const end = new Date();
+                        const start = new Date();
+                        start.setTime(start.getTime() - 3600 * 1000 * 24 * 7);
+                        picker.$emit('pick', [start, end]);
+                    }
+                }, {
+                    text: '最近一个月',
+                    onClick(picker) {
+                        const end = new Date();
+                        const start = new Date();
+                        start.setTime(start.getTime() - 3600 * 1000 * 24 * 30);
+                        picker.$emit('pick', [start, end]);
+                    }
+                }, {
+                    text: '最近三个月',
+                    onClick(picker) {
+                        const end = new Date();
+                        const start = new Date();
+                        start.setTime(start.getTime() - 3600 * 1000 * 24 * 90);
+                        picker.$emit('pick', [start, end]);
+                    }
+                }]
+            }
+        },
+        methods: {
+            handleChange(file, fileList) {
+                if (file.status !== 'ready')
+                    return;
+                window.location = "/survey_escalation.html";
+            },
+            // 点击文件
+            handlePreview(file) {
+                console.log(file);
+            },
+            exports() {
+                window.location = "/surveyEscalation/exportManySheet";
+            },
+            search() {
+                axios.post("/surveyEscalation/search", this.searchMap).then((res) => {
+                    app.surveyEscalation = res.data.data;
+                    app.total = res.data.total;
+                });
+            },
+            //handleSizeChange每页数量发生变化后触发的方法
+            handleSizeChange(pageSize) {
+                this.searchMap.pageSize = pageSize;
+                this.search();
+            },
+            //handleCurrentChange页码变化触发方法
+            handleCurrentChange(pageNum) {
+                this.searchMap.pageNum = pageNum;
+                this.search();
+            },
+            //时间区间发生改变，searcHMap中时间区间条件也要变化
+            dateChange() {
+                //没有选择时间区间或者清理时间条件，当前时间区间为空字符串
+                if (this.selectDate == null || this.selectDate.length == 0) {
+                    this.searchMap.startTime = '';
+                    this.searchMap.endTime = '';
+                } else {
+                    //当时间区间不为空，往searchMap中添加条件
+                    if (this.selectDate[0] != null && this.selectDate[0] != '') {
+                        this.searchMap.startTime = this.dateFormat(this.selectDate[0]);
+
+                    }
+                    if (this.selectDate[1] != null && this.selectDate[1] != '') {
+                        this.searchMap.endTime = this.dateFormat(this.selectDate[1]);
+                    }
+                }
+            },
+            //日期格式化方法
+            //date 要进行格式的日期 ；format 格式化的样式
+            dateFormat(date, format) {
+                //默认格式化字符串"YYYY-MM-DD HH:mm:ss"
+                if (format == null || format == '') {
+                    format = "YYYY-MM-DD HH:mm:ss";
+                }
+                return moment(date).format(format);
+            },
+            /*添加*/
+            admin_add(title, url) {
+                if (title == "疫情登记") {
+                    window.location.href = url;
+                }
+            },
+            /*关闭弹出框口*/
+            x_admin_close() {
+                var index = parent.layer.getFrameIndex(window.name);
+                parent.layer.close(index);
+            }
+        },
+        created: function () {//Vue生命周期方法，加载页面时会执行该方法
+            layui.use(['laydate', 'element', 'laypage', 'layer'], function () {
+                $ = layui.jquery;//jquery
+                layer = layui.layer;//弹出层
+                okLoading.close($);
+                layer.ready(function () { //为了layer.ext.js加载完毕再执行
+                    layer.photos({
+                        photos: '#x-img'
+                    });
+                });
+            });
+            //初始页面获取小区列表信息
+            this.search();
+        }
+    });
+
+</script>
+</body>
+</html>

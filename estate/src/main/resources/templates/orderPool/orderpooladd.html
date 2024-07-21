@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>
+        报修添加
+    </title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
+    <link rel="stylesheet" th:href="@{/css/main.css}" media="all">
+    <script type="text/javascript" th:src="@{/lib/loading/okLoading.js}"></script>
+    <!-- 引入ElementUI样式 -->
+    <link rel="stylesheet" th:href="@{/css/index.css}">
+</head>
+<body>
+<div id="app">
+    <div class="x-nav">
+            <span class="layui-breadcrumb">
+              <a><cite>首页</cite></a>
+              <a><cite>报修设置</cite></a>
+              <a><cite>{{title}}</cite></a>
+            </span>
+        <a class="layui-btn layui-btn-small" style="line-height:1.6em;margin-top:3px;float:right"  href="javascript:location.replace(location.href);" title="刷新"><i class="layui-icon" style="line-height:30px">ဂ</i></a>
+    </div>
+    <div class="x-body">
+        <el-form :model="repairPool" :rules="rules" ref="repairPoolFormRef" label-width="120px" class="demo-ruleForm">
+            <el-form-item label="报修类型" prop="repairType">
+                <el-input v-model="repairPool.repairType"></el-input>
+            </el-form-item>
+
+            <el-form-item label="报修人" prop="repairName">
+                <el-input v-model="repairPool.repairName"></el-input>
+            </el-form-item>
+
+            <el-form-item label="联系电话" prop="tel">
+                <el-input v-model="repairPool.tel"></el-input>
+            </el-form-item>
+
+            <el-form-item label="预约时间" prop="appointmentTime">
+                <el-date-picker type="datetime" placeholder="选择日期" v-model="repairPool.appointmentTime"
+                                style="width: 100%;"></el-date-picker>
+            </el-form-item>
+
+            <el-form-item label="报修内容" prop="context">
+                <el-input type="textarea" v-model="repairPool.context"></el-input>
+            </el-form-item>
+            <el-form-item>
+                <el-button type="primary" @click="save()" style="text-align: center">保存</el-button>
+                <el-button @click="clearAll()" style="text-align: center">重置</el-button>
+            </el-form-item>
+        </el-form>
+    </div>
+</div>
+<script th:src="@{/lib/layui/layui.js}" charset="utf-8"></script>
+<script th:src="@{/js/x-layui.js}" charset="utf-8"></script>
+<!--导入Vue依赖包-->
+<script th:src="@{/js/vue.js}" charset="utf-8"></script>
+<!-- 引入Element组件库 -->
+<script th:src="@{/js/index.js}"></script>
+<!--导入Axios依赖包-->
+<script th:src="@{/js/axios.js}" charset="utf-8"></script>
+<script type="text/javascript">
+    var app = new Vue({
+        el: "#app",
+        data:{
+            title:"电话报修添加",
+            repairPool: {
+                repairId:"",
+                communityId: "",
+                repairType: "",
+                repairName: "",
+                tel: "",
+                appointmentTime: "",
+                context: "",
+                statusCd: "",
+                sendOrdersId: "",
+                address:""
+            },
+            fileList:[],
+            findByStatus: [],
+            findBySendOrdersId:[],
+            rules: {
+                repairType: [
+                    { required: true, message: '请输入报修类型', trigger: 'blur' }
+                ],
+                repairName: [
+                    { required: true, message: '请输入报修人', trigger: 'blur' }
+                ],
+                tel: [
+                    { required: true, message: '请输入联系电话', trigger: 'blur' }
+                ],
+                appointmentTime: [
+                    { required: true, message: '请选择预约时间', trigger: 'blur' }
+                ],
+                context: [
+                    { required: true, message: '请输入报修内容', trigger: 'blur' }
+                ],
+                address:[
+                    { required: true, message: '请输入报修地址', trigger: 'blur' }
+                ],
+            }
+        },
+        methods:{
+            repairFindAllByName() {
+                axios.get("/building/findByCommunityName").then((res) => {
+                    this.findByCommunityName = res.data.data;
+                });
+            },
+
+            //报修状态下拉框
+            repairFindByStatus(){
+                axios.get("/repairPool/findByStatusCd").then((res) => {
+                    this.findByStatus = res.data.data;
+                });
+            },
+
+            //派单方式下拉框
+            repairFindSendOrders(){
+                axios.get("/repairSetting/findBySendOrdersId").then((res) => {
+                    this.findBySendOrdersId = res.data.data;
+                });
+            },
+
+            findByRepairId(){
+                axios.get("/repairPool/findByRepairId?repairId="+this.repairPool.repairId).then((res)=>{
+                    console.log(res);
+                    this.repairPool = res.data.data;
+                });
+            },
+
+            //表单重置
+            clearAll() {
+                this.$refs.repairPoolFormRef.resetFields();
+                if(this.fileList.length>0) {
+                    this.handleRemove();
+                }
+            },
+            save(){
+                let method = "";
+                if(this.title!="电话报修添加"){
+                    method = "update"
+                }else{
+                    method = "add"
+                }
+                console.log(this.repairPool.repairId)
+                axios.post("/repairPool/"+method,this.repairPool).then((res)=>{
+                    if(res.data.flag){
+                        this.$message({
+                            message: res.data.message,
+                            type: 'success'
+                        });
+                        setTimeout(function(){
+                            window.parent.location.reload();
+                            var index = parent.layer.getFrameIndex(window.name);
+                            parent.layer.close(index);
+                        });
+                        return false;
+                    }
+                });
+
+            },
+            getQueryString(name){
+                let reg = `(^|&)${name}=([^&]*)(&|$)`
+                let r = window.location.search.substr(1).match(reg);
+                if (r != null) return unescape(r[2]); return null;
+            }
+        },
+        created:function(){
+            layui.use(['element','layer','form'], function(){
+                $ = layui.jquery;//jquery
+                lement = layui.element();//面包导航
+                layer = layui.layer;//弹出层
+                form = layui.form();
+                okLoading.close($);
+            });
+            //获取父页面传递参数，小区ID
+            this.repairPool.repairId = this.getQueryString("repairId");
+            //根据小区ID获取小区对象，进行数据回显
+            if(this.repairPool.repairId != null && this.repairPool.repairId != ''){
+                this.title="修改业主报修";
+                this.findByRepairId();
+                console.log(this.findByRepairId())
+            }
+            this.repairFindAllByName();
+            this.repairFindByStatus();
+            this.repairFindSendOrders();
+        }
+    });
+</script>
+
+</body>
+</html>

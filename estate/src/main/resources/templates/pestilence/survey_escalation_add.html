@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>
+        疫情登记
+    </title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
+    <link rel="stylesheet" th:href="@{/css/main.css}" media="all">
+    <script type="text/javascript" th:src="@{/lib/loading/okLoading.js}"></script>
+    <!-- 引入ElementUI样式 -->
+    <link rel="stylesheet" th:href="@{/css/index.css}">
+</head>
+<body>
+<div id="app">
+    <div class="x-nav">
+            <span class="layui-breadcrumb">
+              <a><cite>首页</cite></a>
+              <a><cite>房产管理</cite></a>
+              <a><cite>{{title}}</cite></a>
+            </span>
+        <a class="layui-btn layui-btn-small" style="line-height:1.6em;margin-top:3px;float:right"
+           href="javascript:location.replace(location.href);" title="刷新"><i class="layui-icon" style="line-height:30px">ဂ</i></a>
+    </div>
+    <div class="x-body">
+        <el-form :model="surveyEscalation" :rules="rules" ref="surveyEscalationFormRef" label-width="120px"
+                 class="demo-ruleForm">
+            大家好，非常感谢您能抽出时间填写这份问卷。此问卷旨在了解各位对于疫情防控和新冠疫苗的认识程度。
+            <el-divider></el-divider>
+            <el-form-item label="项目" prop="projectName">
+                <el-select v-model="surveyEscalation.projectName" placeholder="请选择登记项目">
+                    <el-option
+                            v-for="item in projectName"
+                            :key="item.value"
+                            :label="item.label"
+                            :value="item.value" @click.native="findByEscalation(surveyEscalation.projectName)">
+                    </el-option>
+                </el-select>
+            </el-form-item>
+            <div v-if="bool==true" v-for="(data,is) in surveyData">
+                <div v-if="data.answerType=='多选题'">
+                    <el-card class="box-card">
+                        <div slot="header" class="clearfix">
+                            <span>{{is+1}},{{data.question}}</span>
+                        </div>
+                        <div v-for="(o,index) in surveyAnswers" v-if="data.questionId==o.questionId">
+                            <el-checkbox-group v-model="check">
+                                <el-checkbox :label="o.choiceText"
+                                             @change="multipleChoice(data.question,o.choiceText)"></el-checkbox>
+                            </el-checkbox-group>
+                        </div>
+                    </el-card>
+                    </br>
+                </div>
+                <div v-if="data.answerType=='单选'">
+                    <el-card class="box-card">
+                        <div slot="header" class="clearfix">
+                            <span>{{is+1}},{{data.question}}</span>
+                        </div>
+                        <el-radio-group v-model="radio[is]">
+                            <el-radio v-for="(o,index) in surveyAnswers"
+                                      @change="singleChoice(data.question,o.choiceText)" v-if="data.questionId==o.questionId"
+                                      :label="index">
+                                {{o.choiceText}}
+                            </el-radio>
+                        </el-radio-group>
+                    </el-card>
+                    </br>
+                </div>
+                <div v-if="data.answerType=='简答题'">
+                    <el-card class="box-card">
+                        <div slot="header" class="clearfix">
+                            <span>{{is+1}},{{data.question}}</span>
+                        </div>
+                        <el-input
+                                type="textarea"
+                                :rows="3"
+                                placeholder="请输入内容"
+                                @change="shortAnswer(data.question,is)"
+                                v-model="choiceText[is]">
+                        </el-input>
+                    </el-card>
+                </div>
+            </div>
+            <el-form-item label="登记人" prop="name">
+                <el-input v-model="surveyEscalation.name"></el-input>
+            </el-form-item>
+            <el-form-item>
+                <el-button type="primary" @click="save()" style="text-align: center">保存</el-button>
+                <el-button @click="clearAll()" style="text-align: center">重置</el-button>
+                <el-button @click="fangHui('放回','survey_escalation.html')" style="text-align: center">放回</el-button>
+            </el-form-item>
+            </br>
+            </br>
+            </br>
+            </br>
+        </el-form>
+    </div>
+</div>
+<script th:src="@{/lib/layui/layui.js}" charset="utf-8"></script>
+<script th:src="@{/js/x-layui.js}" charset="utf-8"></script>
+<!--导入Vue依赖包-->
+<script th:src="@{/js/vue.js}" charset="utf-8"></script>
+<!-- 引入Element组件库 -->
+<script th:src="@{/js/index.js}"></script>
+<!--导入Axios依赖包-->
+<script th:src="@{/js/axios.js}" charset="utf-8"></script>
+<script type="text/javascript">
+    var app = new Vue({
+        el: "#app",
+        data: {
+            radio: [],
+            check: [],
+            choiceText: [],
+            xArr: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"],
+            title: "疫情登记",
+            bool: false,
+            surveyEscalation: {projectName: "", name: "", projectType: "",projectList:null},
+            fileList: [],
+            projectName: [],
+            surveyData: [],
+            surveyAnswers: [],
+            projectList: [],
+            rules: {
+                projectName: [
+                    {required: true, message: '请选择登记项目', trigger: 'blur'}
+                ],
+                name: [
+                    {required: true, message: '请输楼登记人', trigger: 'blur'}
+                ]
+            }
+        },
+        methods: {
+            shortAnswer(question, id) {
+                var obj = {dataQuestion: question, choiceText: this.choiceText[id]};
+                for (var i = 0; i < this.projectList.length; i++) {
+                    if (this.projectList[i].dataQuestion == question) {
+                        this.projectList.splice(i, 1);
+                    }
+                }
+                this.projectList.push(obj);
+                // console.log(this.projectList)
+            },
+            multipleChoice(question, choiceText) {
+                var bool = true;
+                var obj = {dataQuestion: question, choiceText: choiceText};
+                for (var i = 0; i < this.projectList.length; i++) {
+                    if (this.projectList[i].choiceText == choiceText) {
+                        this.projectList.splice(i,1);
+                        bool = false;
+                    }
+                }
+                if (bool) {
+                    this.projectList.push(obj);
+                }
+            },
+            singleChoice(question, choiceText) {
+                var obj = {dataQuestion: question, choiceText: choiceText};
+                for (var i = 0; i < this.projectList.length; i++) {
+                    if (this.projectList[i].dataQuestion == question) {
+                        this.projectList.splice(i, 1);
+                    }
+                }
+                this.projectList.push(obj);
+            },
+            projectNames() {
+                axios.post("/pestilence/projectName").then((res) => {
+                    console.log(res.data.data)
+                    for (var i = 0; i < res.data.data.length; i++) {
+                        var obj = {label: '', value: ''};
+                        obj.label = res.data.data[i];
+                        obj.value = res.data.data[i];
+                        this.projectName.push(obj);
+                    }
+                })
+            },
+            findByEscalation(projectName) {
+                axios.post("/pestilence/findByprojectName?projectName=" + projectName).then((res) => {
+                    this.surveyEscalation.projectName = res.data.data.projectName;
+                    this.surveyEscalation.projectType = res.data.data.projectType;
+                    axios.post("/surveyDate/findBySurveyIdInName?projectName=" + projectName).then((res) => {
+                        this.surveyData = res.data.data;
+                        axios.post("/surveyDate/findByQuestionIdInName?projectName=" + projectName).then((res) => {
+                            this.surveyAnswers = res.data.data;
+                        })
+                    })
+                    this.bool = true;
+                })
+            },
+            fangHui(title, url) {
+                if (title == "放回") {
+                    window.location.href = url;
+                }
+            },
+            //表达重置
+            clearAll() {
+                this.$refs.surveyEscalationFormRef.resetFields();
+                if (this.fileList.length > 0) {
+                    this.handleRemove();
+                }
+            },
+            save() {
+                var method = "add";
+                this.surveyEscalation.projectList=this.projectList;
+                axios.post("/surveyEscalation/" + method, this.surveyEscalation).then((res) => {
+                    if (res.data.flag) {
+                        this.$message({
+                            message: res.data.message,
+                            type: 'success'
+                        });
+                    }
+                });
+            }
+        },
+        created: function () {
+            layui.use(['element', 'layer', 'form'], function () {
+                $ = layui.jquery;//jquery
+                lement = layui.element();//面包导航
+                layer = layui.layer;//弹出层
+                form = layui.form();
+                okLoading.close($);
+            });
+            this.projectNames();
+        }
+    });
+</script>
+</body>
+</html>

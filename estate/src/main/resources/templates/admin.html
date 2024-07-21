@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.springframework.org/schema/security">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<div>EstateManager</div>
+<div sec:authentication="name">用户名</div>
+<div sec:authentication="principal.authorities">权限列表</div>
+<div sec:authorize="isAuthenticated()">判断是否已经登录-已登录</div>
+<div sec:authorize="hasRole('超级管理员')">
+    <a>'超级'管理面页面</a>
+</div>
+<div sec:authorize="hasRole('普通管理员')">
+    <a>'普通'管理员页面</a>
+</div>
+<div sec:authorize="hasAuthority('ROLE_admin')">
+    <a>'管理面权限'角色页面</a>
+</div>
+<div sec:authorize="hasAuthority('ROLE_user')">
+    <a>'用户'角色页面</a>
+</div>
+<div sec:authorize-url="/communitylist.html">
+    <a>/communitylist.html</a>
+</div>
+<div sec:authorize-url="/homelist.html">
+    <a>/homelist.html</a>
+</div>
+<div sec:authorize-url="/buildinglst.html">
+    <a>/buildinglst.html</a>
+</div>
+</body>
+</html>

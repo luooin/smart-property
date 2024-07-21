@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>
+        添加房产信息
+    </title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
+    <link rel="stylesheet" th:href="@{/css/main.css}" media="all">
+    <script type="text/javascript" th:src="@{/lib/loading/okLoading.js}"></script>
+    <!-- 引入ElementUI样式 -->
+    <link rel="stylesheet" th:href="@{/css/index.css}">
+    <style>
+        .imgs {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="x-nav">
+            <span class="layui-breadcrumb">
+              <a><cite>首页</cite></a>
+              <a><cite>房产管理</cite></a>
+              <a><cite>{{title}}</cite></a>
+            </span>
+        <a class="layui-btn layui-btn-small" style="line-height:1.6em;margin-top:3px;float:right"
+           href="javascript:location.replace(location.href);" title="刷新"><i class="layui-icon" style="line-height:30px">ဂ</i></a>
+    </div>
+    <div class="x-body">
+        <el-form :model="home" :rules="rules" ref="buildingFormRef" label-width="120px" class="demo-ruleForm">
+            <el-form-item label="所属小区" prop="communityName">
+                <el-select v-model="home.communityName" filterable placeholder="--请选择所属小区--">
+                    <el-option
+                            v-for="item in communityList"
+                            :key="item.index"
+                            :label="item.name"
+                            :value="item.name" @click.native="houseFindAllByName(home.communityName)">
+                    </el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="栋数" prop="buildingName">
+                <el-select v-model="home.buildingName" placeholder="--请选择栋数--">
+                    <el-option
+                            v-for="item in findByName"
+                            :key="item.index"
+                            :label="item.name"
+                            :value="item.name" @click.native="buildingFindAllByName(home.buildingName)">
+                    </el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="户主名称" prop="ownerName">
+                <el-autocomplete
+                        class="inline-input"
+                        v-model="home.ownerName"
+                        :fetch-suggestions="querySearch"
+                        placeholder="请输入内容"
+                        :trigger-on-focus="false"
+                        @select="handleSelect" @focus.native.capture="showOwnerTelephone('sss')"
+                        @blur.native.capture="showOwnerTelephone('')"></el-autocomplete>
+                <!--                <el-input v-model="home.ownerName"></el-input>-->
+            </el-form-item>
+            <el-form-item label="联系方式" prop="telephone">
+                <el-input v-model="home.telephone"></el-input>
+            </el-form-item>
+            <el-form-item label="房产名称" prop="name">
+                <el-input v-model="home.name"></el-input>
+            </el-form-item>
+            <el-form-item label="房产编码" prop="code">
+                <el-input v-model="home.code"></el-input>
+            </el-form-item>
+            <el-form-item label="房间数" prop="roomNum">
+                <el-input v-model="home.roomNum"></el-input>
+            </el-form-item>
+            <el-form-item label="单元" prop="unit">
+                <el-input v-model="home.unit"></el-input>
+            </el-form-item>
+            <el-form-item label="楼层" prop="floor">
+                <el-input v-model="home.floor"></el-input>
+            </el-form-item>
+            <el-form-item label="入住时间" prop="liveTime">
+                <el-col :span="11">
+                    <el-date-picker type="date" placeholder="选择日期" v-model="home.liveTime"
+                                    style="width: 100%;"></el-date-picker>
+                </el-col>
+                <el-col class="line" :span="2">——————</el-col>
+                <el-col :span="11">
+                    <el-time-picker placeholder="选择时间" v-model="home.liveTime" style="width: 100%;"></el-time-picker>
+                </el-col>
+            </el-form-item>
+            <el-form-item label="描述" prop="description">
+                <el-input type="textarea" v-model="home.description"></el-input>
+            </el-form-item>
+            <el-form-item style="display:none">
+                <el-input v-model="home.communityId"></el-input>
+            </el-form-item>
+            <el-form-item style="display:none">
+                <el-input v-model="home.buildingId"></el-input>
+            </el-form-item>
+            <el-form-item style="display:none">
+                <el-input v-model="home.ownerId"></el-input>
+            </el-form-item>
+            <el-form-item>
+                <el-button type="primary" @click="save()" style="text-align: center">保存</el-button>
+                <el-button @click="clearAll()" style="text-align: center">重置</el-button>
+            </el-form-item>
+        </el-form>
+    </div>
+</div>
+<script th:src="@{/lib/layui/layui.js}" charset="utf-8"></script>
+<script th:src="@{/js/x-layui.js}" charset="utf-8"></script>
+<script th:src="@{/js/jquery.min.js}" charset="utf-8"></script>
+<!--导入Vue依赖包-->
+<script th:src="@{/js/vue.js}" charset="utf-8"></script>
+<!-- 引入Element组件库 -->
+<script th:src="@{/js/index.js}"></script>
+<!--导入Axios依赖包-->
+<script th:src="@{/js/axios.js}" charset="utf-8"></script>
+<!--<script src="/static/xiyuan/js/jquery.js" charset="utf-8"></script>-->
+<script type="text/javascript">
+    var token='[[${session.estateManager}]]';
+    var app = new Vue({
+        el: "#app",
+        data: {
+            showEl:false,
+            restaurants: [],
+            communityList:[],
+            title: "添加房产",
+            home: {
+                id: "",
+                communityId: "",
+                buildingId: "",
+                ownerId: "",
+                communityName: "",
+                telephone: "",
+                ownerName: "",
+                buildingName: "",
+                name:""
+            },
+            findByName: [],
+            fileList: [],
+            rules: {
+                communityName: [
+                    {required: true, message: '请选择所属小区名称', trigger: 'blur'}
+                ],
+                buildingName: [
+                    {required: true, message: '请输入所属栋数名称', trigger: 'blur'}
+                ],
+                code: [
+                    {required: true, message: '请输入房产编码', trigger: 'blur'}
+                ],
+                name: [
+                    {required: true, message: '请输房产名称', trigger: 'blur'}
+                ],
+                ownerName: [
+                    {required: true, message: '请输户主名称', trigger: 'blur'}
+                ],
+                telephone: [
+                    {required: true, message: '请输联系方式', trigger: 'blur'}
+                ],
+                roomNum: [
+                    {required: true, message: '请输房间数', trigger: 'blur'}
+                ],
+                unit: [
+                    {required: true, message: '请输单元', trigger: 'blur'}
+                ],
+                floor: [
+                    {required: true, message: '请输楼层', trigger: 'blur'}
+                ],
+                liveTime: [
+                    {required: true, message: '请输入住时间', trigger: 'blur'}
+                ],
+                description: [
+                    {required: true, message: '请输入描述', trigger: 'blur'}
+                ]
+            }
+        },
+        methods: {
+            houseFindAllByCommunityName() {
+                axios.get("/community/find").then((res) => {
+                    this.communityList = res.data.data;
+                });
+            },
+            showOwner() {
+                axios.get("/owner/find",{headers:{
+                        token:token
+                    }}).then((res) => {
+                    for (var i = 0; i < res.data.data.length; i++) {
+                        var obj = {value: "", telephone: ""};
+                        obj.value = res.data.data[i].name;
+                        obj.telephone = res.data.data[i].telephone;
+                        this.restaurants.push(obj);
+                    }
+                });
+            },
+            querySearch(queryString, cb) {
+                var restaurants = this.restaurants;
+                var results = queryString ? restaurants.filter(this.createFilter(queryString)) : restaurants;
+                // 调用 callback 返回建议列表的数据
+                cb(results);
+            },
+            showOwnerTelephone(ifs) {
+                if (ifs != '') {
+                    this.home.telephone = "";
+                } else {
+                    for (var i = 0; i < this.restaurants.length; i++) {
+                        if (this.home.ownerName == this.restaurants[i].value) {
+                            this.home.telephone = this.restaurants[i].telephone;
+                        }
+                    }
+                    this.ownerFindAllByName();
+                }
+            },
+            createFilter(queryString) {
+                return (restaurant) => {
+                    return (restaurant.value.toLowerCase().indexOf(queryString.toLowerCase()) === 0);
+                };
+            },
+            handleSelect(item) {
+                console.log(item);
+            },
+            houseFindAllByName(communityName) {
+                axios.get("/building/findByName?communityName=" + communityName).then((res) => {
+                    this.findByName = res.data.data;
+                });
+                axios.get("/home/addById?communityName=" + communityName).then((res) => {
+                    this.home.communityId = res.data.data+"";
+                });
+                if (this.home.buildingId != "" || this.home.buildingId != 0) {
+                    axios.get("/home/addById?buildingName=" + this.home.buildingName + "&communityName=" + communityName).then((res) => {
+                        this.home.buildingId = res.data.data+"";
+                    });
+                }
+            },
+            buildingFindAllByName(buildingName) {
+                axios.get("/home/addById?buildingName=" + buildingName + "&communityName=" + this.home.communityName).then((res) => {
+                    this.home.buildingId = res.data.data;
+                });
+            },
+            ownerFindAllByName() {
+                axios.get("/home/addById?ownerName=" + this.home.ownerName).then((res) => {
+                    this.home.ownerId = res.data.data;
+                });
+            },
+            findById() {
+                axios.get("/home/findById?id=" + this.home.id).then((res) => {
+                    this.home = res.data.data;
+                    this.houseFindAllByName(res.data.data.communityName);
+                });
+            },
+            //表达重置
+            clearAll() {
+                this.$refs.buildingFormRef.resetFields();
+                if (this.fileList.length > 0) {
+                    this.handleRemove();
+                }
+            },
+            save() {
+                var method = "";
+                if (this.home.id != null) {
+                    method = "update"
+                } else {
+                    method = "add"
+                }
+                axios.post("/home/" + method, this.home).then((res) => {
+                    if (res.data.flag) {
+                        this.$message({
+                            message: res.data.message,
+                            type: 'success'
+                        });
+                    }
+                });
+            },
+            getQueryString(name) {
+                let reg = `(^|&)${name}=([^&]*)(&|$)`
+                let r = window.location.search.substr(1).match(reg);
+                if (r != null) return unescape(r[2]);
+                return null;
+            }
+        },
+        created: function () {
+            layui.use(['element', 'layer', 'form'], function () {
+                $ = layui.jquery;//jquery
+                lement = layui.element();//面包导航
+                layer = layui.layer;//弹出层
+                form = layui.form();
+                okLoading.close($);
+            });
+            //获取父页面传递参数，小区ID
+            this.home.id = this.getQueryString("id");
+            //根据小区ID获取小区对象，进行数据回显
+            if (this.home.id != null && this.home.id != '') {
+                this.title = "修改房产";
+                this.findById();
+            }
+            this.houseFindAllByCommunityName();
+            this.buildingFindAllByName();
+            this.showOwner();
+        }
+    });
+</script>
+<!--<script>-->
+
+<!--    layui.use(['laydate','element','layer','form'], function(){-->
+<!--        $ = layui.jquery;//jquery-->
+
+<!--        laydate = layui.laydate;//日期插件-->
+<!--        lement = layui.element();//面包导航-->
+<!--        layer = layui.layer;//弹出层-->
+
+<!--        form = layui.form();-->
+<!--        okLoading.close($);-->
+<!--        form.render();-->
+<!--        var start = {-->
+<!--            min: laydate.now()-->
+<!--            ,max: '2099-06-16 23:59:59'-->
+<!--            ,istoday: false-->
+<!--            ,choose: function(datas){-->
+<!--                //end.min = datas; //开始日选好后，重置结束日的最小日期-->
+<!--                //end.start = datas //将结束日的初始值设定为开始日-->
+<!--            }-->
+<!--        };-->
+
+<!--        document.getElementById('LAY_demorange_s').onclick = function(){-->
+<!--            start.elem = this;-->
+<!--            laydate(start);-->
+<!--        };-->
+
+<!--        //监听提交-->
+<!--        form.on('submit(add)', function(data){-->
+<!--            var home_name=$("input[name='home_name']").val();-->
+<!--            var householder=$("input[name='householder']").val();-->
+<!--            if(home_name==""){-->
+<!--                layer.msg('房产名称不能为空',{icon:5,time:2000});return false;-->
+<!--            }-->
+<!--            if(householder==""){-->
+<!--                layer.msg('户主名称不能为空',{icon:5,time:2000});return false;-->
+<!--            }-->
+<!--            var data=data.field;-->
+<!--            $.ajax({-->
+<!--                type:"post",-->
+<!--                url:"/xiyuan/home/add.html",-->
+<!--                data:data,-->
+<!--                dataType:"json",-->
+<!--                success:function(data)-->
+<!--                {-->
+<!--                    //alert(1);-->
+<!--                    if(data.status==1)-->
+<!--                    {-->
+<!--                        layer.msg(data.info, {icon: 6,time:2000},function () {-->
+<!--                            window.parent.location.reload();-->
+<!--                            var index = parent.layer.getFrameIndex(window.name);-->
+<!--                            parent.layer.close(index);-->
+<!--                        });-->
+<!--                        return false;-->
+
+<!--                    }-->
+<!--                    else{-->
+<!--                        layer.msg(data.info,{icon:5,time:2000});return false;-->
+<!--                    }-->
+<!--                }-->
+
+<!--            });-->
+
+<!--        });-->
+<!--        form.on('select(aihao)', function(data){-->
+<!--            communidy();-->
+<!--        });-->
+<!--        $(function () {-->
+<!--            communidy();-->
+<!--        });-->
+<!--        //communidy();-->
+<!--        function communidy() {-->
+<!--            var communidy = $("#community_id").val();-->
+
+<!--            $.ajax({-->
+<!--                url:"/xiyuan/home/building.html",-->
+<!--                type:"post",-->
+<!--                dataType:"json",-->
+<!--                data:{communidy:communidy},-->
+<!--                success:function (data) {-->
+
+<!--                    var dlen =data.length;-->
+<!--                    var str='';-->
+<!--                    for (var i=0;i<dlen;i++){-->
+<!--                        var dt=data[i];-->
+<!--                        str +='<option value="' + dt.id + '">';-->
+<!--                        str +=dt.buildings_name;-->
+<!--                        str +='</option>';-->
+<!--                    }-->
+
+<!--                    $("#building_id").html(str);-->
+<!--                    form.render('select', 'aihao');-->
+<!--                    //form.render('#building_id');-->
+
+<!--                }-->
+<!--            })-->
+<!--        }-->
+
+
+<!--    })-->
+<!--</script>-->
+<!--栏目缩略图上传-->
+<script>
+
+    /*$("#community_id").blur(function(){
+        communidy()
+    });*/
+
+
+    //window.onload = communidy;
+
+</script>
+
+</body>
+</html>

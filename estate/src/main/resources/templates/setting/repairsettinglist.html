@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html  lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>
+        报修管理
+    </title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
+    <link rel="stylesheet" th:href="@{/css/main.css}" media="all">
+    <script type="text/javascript" th:src="@{/lib/loading/okLoading.js}"></script>
+    <link rel="stylesheet" th:href="@{/css/bootstrap.css}">
+    <!--导入ElementUI样式列表，css样式一般都在页面头部-->
+    <link rel="stylesheet" th:href="@{/css/index.css}">
+</head>
+<body>
+<div class="x-nav">
+            <span class="layui-breadcrumb">
+              <a><cite>首页</cite></a>
+              <a><cite>报修管理</cite></a>
+              <a><cite>报修设置</cite></a>
+            </span>
+    <a class="layui-btn layui-btn-small" style="line-height:1.6em;margin-top:3px;float:right"  href="javascript:location.replace(location.href);" title="刷新"><i class="layui-icon" style="line-height:30px">ဂ</i></a>
+</div>
+<div class="x-body" id="app">
+    <span class="demonstration">类型名称:</span>
+    <el-input v-model="searchMap.repairType" style="width: 20%" placeholder="请输入类型名称"></el-input>
+    <span class="demonstration">派单类型:</span>
+    <el-input v-model="searchMap.sendOrdersType" style="width: 20%" placeholder="请输入派单类型"></el-input>
+    <el-button type="primary" plain @click="searchMap.pageNum=1;search()">搜索</el-button>
+    <br/>
+
+    <xblock>
+        <button class="layui-btn layui-btn-danger" @click="delAll()"><i class="layui-icon">&#xe640;</i>批量删除</button>
+        <button class="layui-btn" @click="admin_add('添加','repairsettingadd.html','1000','600')"><i class="layui-icon">&#xe608;</i>添加</button>
+        <span class="x-right" style="line-height:40px">共有数据：<span class="layui-badge">{{total}}</span> 条</span>
+    </xblock>
+    <table class="layui-table">
+        <thead>
+        <tr>
+            <th>
+                <input type="checkbox" id="allChecked" :checked="checkedIDs.length===settingList.length" @click="allChecked">
+            </th>
+            <th>
+                类型名称
+            </th>
+            <th>
+                报修设置类型
+            </th>
+            <th>
+                派单方式
+            </th>
+            <th>
+                派单类型
+            </th>
+            <th>
+                公共区域
+            </th>
+            <th>
+                是否回访
+            </th>
+            <th>
+                创建时间
+            </th>
+            <th>
+                操作
+            </th>
+        </tr>
+        </thead>
+        <tbody id="x-img">
+        <tr v-for="(repairSetting,index) in settingList">
+            <td>
+                <input type="checkbox" :settingId="'settingId'+repairSetting.settingId" :value="repairSetting.settingId" v-model="checkedIDs">
+            </td>
+            <td>{{repairSetting.settingId}}</td>
+            <td>{{findBySettingType(repairSetting.repairSettingTypeId)}}</td>
+            <td>{{findSendOrdersById(repairSetting.sendOrdersId)}}</td>
+            <td>{{repairSetting.sendOrdersType}}</td>
+            <td>{{findByAreaId(repairSetting.areaId)}}</td>
+            <td>{{findByVisitId(repairSetting.returnVisitId)}}</td>
+            <td>{{dateFormat(repairSetting.createTime)}}</td>
+            <td class="td-manage">
+                <a title="编辑" href="javascript:;" @click="setting_edit('编辑','repairsettingadd.html',repairSetting.settingId,'1000','600')"
+                   class="ml-5" style="text-decoration:none">
+                    <i class="layui-icon">&#xe642;</i>
+                </a>
+                <a title="绑定维修师傅" href="javascript:;" @click="accendant_list('绑定维修师傅','accendantlist.html',repairSetting.settingId,'1000','600')"
+                   class="ml-5" style="text-decoration:none">
+                    <i class="layui-icon">&#xe612;</i>
+                </a>
+                <a title="删除" href="javascript:;" @click="del_one(repairSetting.settingId)"
+                   style="text-decoration:none">
+                    <i class="layui-icon">&#xe640;</i>
+                </a>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <el-pagination
+            background
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+            :page-size="searchMap.pageSize"
+            layout="prev, pager, next,sizes"
+            :page-sizes="[5,10,20]"
+            style="text-align: right;"
+            :total="total">
+    </el-pagination>
+</div>
+<script th:src="@{/lib/layui/layui.js}" charset="utf-8"></script>
+<!--js脚本一般是放在页面尾部-->
+<!--Vue js脚本-->
+<script th:src="@{/js/vue.js}" charset="utf-8"></script>
+<!--引入ElementUI组件库-->
+<script th:src="@{/js/index.js}" charset="utf-8"></script>
+<!--引入Axios js脚本-->
+<script th:src="@{/js/axios.js}" charset="utf-8"></script>
+<!--引入时间插件包Momentjs-->
+<script th:src="@{/js/moment.min.js}" charset="utf-8"></script>
+<script>
+    var app = new Vue({
+        el:"#app",//声明当前Vue在页面的作用域
+        data:{
+            checkedIDs:[],
+            settingList:[],
+            sendOrdersName:'',
+            sendOrders:[{sendOrdersId:'',sendOrdersName:''}],
+            area: [{areaId:'',areaFlag:''}],
+            returnVisit:[{returnVisitId:'',returnVisitFlag:''}],
+            settingType:[{repairSettingTypeId:'',repairSettingTypeName:''}],
+            total:10,
+            searchMap:{"repairType":"","sendOrdersType":"","pageNum":1,"pageSize":5}
+        },
+        methods:{
+            findSendOrdersById(sendOrdersId){
+               for (var i=0;i<this.sendOrders.length;i++){
+                   if(this.sendOrders[i].sendOrdersId==sendOrdersId){
+                       return this.sendOrders[i].sendOrdersName;
+                   }
+               }
+            },
+            ordersSb(){
+                axios.get("/repairSetting/findBySendOrdersId").then((res)=>{
+                    this.sendOrders= res.data.data;
+                });
+            },
+            findByAreaId(areaId){
+                for(var i= 0;i<this.area.length;i++){
+                    if(this.area[i].areaId==areaId){
+                        return this.area[i].areaFlag;
+                    }
+                }
+            },
+            areaSelect(){
+                axios.get("/repairSetting/findByAreaId").then((res)=>{
+                    this.area = res.data.data;
+                });
+            },
+            findByVisitId(returnVisitId){
+                for(var i = 0;i<this.returnVisit.length;i++){
+                    if(this.returnVisit[i].returnVisitId==returnVisitId){
+                        return this.returnVisit[i].returnVisitFlag;
+                    }
+                }
+            },
+            returnVisitSelect(){
+                axios.get("/repairSetting/findByVisitId").then((res)=>{
+                    this.returnVisit = res.data.data;
+                    console.log(this.returnVisit)
+                });
+            },
+            findBySettingType(repairSettingTypeId){
+                for(var i = 0;i<this.settingType.length;i++){
+                    if(this.settingType[i].repairSettingTypeId==repairSettingTypeId){
+                        return this.settingType[i].repairSettingTypeName;
+                    }
+                }
+            },
+            repairSettingTypeSelect(){
+                axios.get("/repairSetting/findBySettingType").then((res)=>{
+                    this.settingType = res.data.data;
+                });
+            },
+            //分页条件查询报修设置
+            search(){
+                axios.post("/repairSetting/search",this.searchMap).then((res)=>{
+                    app.settingList = res.data.data;
+                    app.total = res.data.total;
+                });
+            },
+            //单个删除
+            del_one(id){
+                this.$confirm('请问您是否要删除选中报修设置信息?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    //把选中的ID封装到集合中
+                    this.checkedIDs.push(id);
+                    //执行删除操作
+                    axios.post("/repairSetting/del",this.checkedIDs).then((res)=>{
+                        if(res.data.flag){
+                            this.$message({
+                                type: 'success',
+                                message: '删除成功!'
+                            });
+                        }
+                        //删除成功，把选中的ID列表置为空
+                        this.checkedIDs = [];
+                        //把页面置为1，重新获取列表数据
+                        this.searchMap.pageNum = 1;
+                        this.search();
+                    });
+                }).catch(() => {
+                    this.$message({
+                        type: 'info',
+                        message: '已取消删除'
+                    });
+                });
+            },
+            //多选删除
+            delAll(){
+                this.$confirm('请问您是否要删除选中报修设置信息?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    //执行删除操作
+                    axios.post("/repairSetting/del",this.checkedIDs).then((res)=>{
+                        if(res.data.flag){
+                            this.$message({
+                                type: 'success',
+                                message: '删除成功!'
+                            });
+                        }
+                        //删除成功，把选中的ID列表置为空
+                        this.checkedIDs = [];
+                        //把页面置为1，重新获取列表数据
+                        this.searchMap.pageNum = 1;
+                        this.search();
+                    });
+                }).catch(() => {
+                    this.$message({
+                        type: 'info',
+                        message: '已取消删除'
+                    });
+                });
+            },
+            urlImg(url) {
+                return "http://localhost" + url;
+            },
+            //全选、全不选方法
+            allChecked: function () {
+                if (this.checkedIDs.length === this.settingList.length) {
+                    // 全不选
+                    this.checkedIDs = [];
+                } else {
+                    this.checkedIDs = [];
+                    // 全选
+                    this.settingList.forEach( (item) =>{
+                        this.checkedIDs.push(item.id); // 与checkbox的value统一
+                    })
+                }
+            },
+            //handleSizeChange每页数量发生变化后触发的方法
+            handleSizeChange(pageSize){
+                this.searchMap.pageSize = pageSize;
+                this.search();
+            },
+            //handleCurrentChange页码变化触发方法
+            handleCurrentChange(pageNum){
+                this.searchMap.pageNum = pageNum;
+                this.search();
+            },
+            //日期格式化方法
+            //date 要进行格式的日期 ；format 格式化的样式
+            dateFormat(date,format){
+                //默认格式化字符串"YYYY-MM-DD HH:mm:ss"
+                if(format == null || format == ''){
+                    format = "YYYY-MM-DD HH:mm:ss";
+                }
+                return moment(date).format(format);
+            },
+            /*添加*/
+            admin_add(title,url,w,h){
+                this.x_admin_show(title,url,w,h);
+            },
+            //编辑
+            setting_edit (title,url,id,w,h) {
+                url = url+"?settingId="+id;
+                this.x_admin_show(title,url,w,h);
+            },
+            //绑定维修师傅
+            accendant_list (title,url,id,w,h) {
+                if(title=="绑定维修师傅"){
+                    window.location.href=url+"?id="+id;
+                }else {
+                    url = url+"?id="+id;
+                }
+                this.x_admin_show(title,url,w,h);
+            },
+            //编辑
+            building_edit (title,url,id,w,h) {
+                if(title=="问卷题目"){
+                    window.location.href=url+"?id="+id;
+                }else {
+                    url = url+"?id="+id;
+                }
+                this.x_admin_show(title,url,w,h);
+            },
+            /*弹出层*/
+            /*
+                参数解释：
+                title	标题
+                url		请求的url
+                id		需要操作的数据id
+                w		弹出层宽度（缺省调默认值）
+                h		弹出层高度（缺省调默认值）
+            */
+            x_admin_show(title,url,width,height){
+                if (title == null || title == '') {
+                    title=false;
+                };
+                if (url == null || url == '') {
+                    url="404.html";
+                };
+                if (width == null || width == '') {
+                    width=800;
+                };
+                if (height == null || height == '') {
+                    height=($(window).height() - 50);
+                };
+
+                layer.open({
+                    type: 2,
+                    area: [width+'px', height +'px'],
+                    fix: false, //不固定
+                    maxmin: true,
+                    shadeClose: true,
+                    shade:0.4,
+                    title: title,
+                    content: url,
+                    cancel: function(index, layero){
+                        //使用右上角x关闭弹窗层，回调方法，重新加载页面数据，让修改或者新增的数据立马显示在页面上
+                        app.search();
+                    }
+                });
+            },
+            /*关闭弹出框口*/
+            x_admin_close(){
+                var index = parent.layer.getFrameIndex(window.name);
+                parent.layer.close(index);
+            }
+        },
+        created:function () {//Vue生命周期方法，加载页面时会执行该方法
+            layui.use(['laydate','element','laypage','layer'], function(){
+                $ = layui.jquery;//jquery
+                layer = layui.layer;//弹出层
+                okLoading.close($);
+                layer.ready(function(){ //为了layer.ext.js加载完毕再执行
+                    layer.photos({
+                        photos: '#x-img'
+                    });
+                });
+            });
+            //初始页面获取报修设置列表信息
+            this.search();
+            this.ordersSb();
+            this.areaSelect();
+            this.returnVisitSelect();
+            this.repairSettingTypeSelect();
+        }
+    });
+</script>
+<!--<script>-->
+<!--    layui.use(['laydate','element','laypage','layer'], function(){-->
+<!--        $ = layui.jquery;//jquery-->
+<!--        laydate = layui.laydate;//日期插件-->
+<!--        lement = layui.element();//面包导航-->
+<!--        laypage = layui.laypage;//分页-->
+<!--        layer = layui.layer;//弹出层-->
+<!--        okLoading.close($);-->
+<!--        //以上模块根据需要引入-->
+
+
+<!--        var start = {-->
+<!--            min: laydate.now()-->
+<!--            ,max: '2099-06-16 23:59:59'-->
+<!--            ,istoday: false-->
+<!--            ,choose: function(datas){-->
+<!--                end.min = datas; //开始日选好后，重置结束日的最小日期-->
+<!--                end.start = datas //将结束日的初始值设定为开始日-->
+<!--            }-->
+<!--        };-->
+
+<!--        var end = {-->
+<!--            min: laydate.now()-->
+<!--            ,max: '2099-06-16 23:59:59'-->
+<!--            ,istoday: false-->
+<!--            ,choose: function(datas){-->
+<!--                start.max = datas; //结束日选好后，重置开始日的最大日期-->
+<!--            }-->
+<!--        };-->
+
+<!--        document.getElementById('LAY_demorange_s').onclick = function(){-->
+<!--            start.elem = this;-->
+<!--            laydate(start);-->
+<!--        }-->
+<!--        document.getElementById('LAY_demorange_e').onclick = function(){-->
+<!--            end.elem = this-->
+<!--            laydate(end);-->
+<!--        }-->
+<!--    });-->
+
+<!--    //批量删除提交-->
+<!--    function delAll () {-->
+<!--        layer.confirm('确认要删除吗？',function(index){-->
+<!--            //捉到所有被选中的，发异步进行删除-->
+<!--            layer.msg('删除成功', {icon: 1});-->
+<!--        });-->
+<!--    }-->
+
+<!--    function question_show (argument) {-->
+<!--        layer.msg('可以跳到前台具体问题页面',{icon:1,time:1000});-->
+<!--    }-->
+<!--    /*添加*/-->
+<!--    function repair_add(title,url,w,h){-->
+<!--        x_admin_show(title,url,w,h);-->
+<!--    }-->
+<!--    //编辑-->
+<!--    function repair_edit (title,url,id,w,h) {-->
+<!--        url =url+"?id="+id;-->
+<!--        x_admin_show(title,url,w,h);-->
+<!--    }-->
+
+<!--    /*删除*/-->
+<!--    function repair_del(obj,id){-->
+<!--        layer.confirm('确认要删除吗？',{icon:3,title:'提示信息'},function(index){-->
+<!--            $.ajax({-->
+<!--                type:"post",-->
+<!--                url:"xxx",-->
+<!--                data:{id:id},-->
+<!--                dataType:"json",-->
+<!--                success:function(data){-->
+<!--                    //console.log(data);-->
+<!--                    if(data.status==1){-->
+<!--                        //发异步删除数据-->
+<!--                        $(obj).parents("tr").remove();-->
+<!--                        layer.msg(data.info,{icon:6,time:1000});-->
+<!--                        setTimeout(function(){-->
+<!--                            window.location.reload();-->
+<!--                        },1000);return false;-->
+<!--                    } else{-->
+<!--                        layer.msg(data.info,{icon:5,time:1000});return false;-->
+<!--                    }-->
+<!--                }-->
+<!--            });-->
+<!--            //发异步删除数据-->
+<!--            $(obj).parents("tr").remove();-->
+<!--            layer.msg('已删除!',{icon:1,time:1000});-->
+<!--        });-->
+<!--    }-->
+<!--</script>-->
+
+</body>
+</html>

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>
+        报修添加
+    </title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
+    <link rel="stylesheet" th:href="@{/css/main.css}" media="all">
+    <script type="text/javascript" th:src="@{/lib/loading/okLoading.js}"></script>
+    <!-- 引入ElementUI样式 -->
+    <link rel="stylesheet" th:href="@{/css/index.css}">
+</head>
+<body>
+<div id="app">
+    <div class="x-nav">
+            <span class="layui-breadcrumb">
+              <a><cite>首页</cite></a>
+              <a><cite>报修设置</cite></a>
+              <a><cite>{{title}}</cite></a>
+            </span>
+        <a class="layui-btn layui-btn-small" style="line-height:1.6em;margin-top:3px;float:right"  href="javascript:location.replace(location.href);" title="刷新"><i class="layui-icon" style="line-height:30px">ဂ</i></a>
+    </div>
+    <div class="x-body">
+        <el-form :model="repairSetting" :rules="rules" ref="repairSettingFormRef" label-width="120px" class="demo-ruleForm">
+            <el-form-item label="工单设置编号" prop="settingId">
+                <el-input v-model="repairSetting.settingId"></el-input>
+            </el-form-item>
+            <el-form-item label="派单类型" prop="sendOrdersType">
+                <el-input v-model="repairSetting.sendOrdersType"></el-input>
+            </el-form-item>
+            <el-form-item label="报修类型" prop="repairType">
+                <el-input v-model="repairSetting.repairType"></el-input>
+            </el-form-item>
+            <el-form-item label="所属小区" prop="communityName">
+                <el-select v-model="repairSetting.communityId" filterable placeholder="--请选择所属小区--">
+                    <el-option
+                            v-for="item in findByCommunityName"
+                            :key="item.index"
+                            :label="item.communityName"
+                            :value="item.communityId" @click.native="repairFindAllByName(repairSetting.communityName)">
+                    </el-option>
+                </el-select>
+            </el-form-item>
+
+            <el-form-item label="报修设置类型" prop="repairSettingTypeName">
+                <el-select v-model="repairSetting.repairSettingTypeId" filterable placeholder="--请选择报修设置类型--">
+                    <el-option
+                            v-for="item in findBySettingType"
+                            :key="item.index"
+                            :label="item.repairSettingTypeName"
+                            :value="item.repairSettingTypeId" @click.native="repairFindByType(repairSetting.repairSettingTypeName)">
+                    </el-option>
+                </el-select>
+            </el-form-item>
+
+            <el-form-item label="派单方式" prop="sendOrdersName">
+                <el-select v-model="repairSetting.sendOrdersId" filterable placeholder="--请选择派单方式--">
+                    <el-option
+                            v-for="item in findBySendOrdersId"
+                            :key="item.index"
+                            :label="item.sendOrdersName"
+                            :value="item.sendOrdersId" @click.native="repairFindSendOrders(repairSetting.sendOrdersName)">
+                    </el-option>
+                </el-select>
+            </el-form-item>
+
+            <el-form-item label="公共区域" prop="areaFlag">
+                <el-select v-model="repairSetting.areaId" filterable placeholder="--请选择是否为公共区域--">
+                    <el-option
+                            v-for="item in findByAreaId"
+                            :key="item.index"
+                            :label="item.areaFlag"
+                            :value="item.areaId" @click.native="repairFindByArea(repairSetting.areaFlag)">
+                    </el-option>
+                </el-select>
+            </el-form-item>
+
+            <el-form-item label="回访设置" prop="returnVisitFlag">
+                <el-select v-model="repairSetting.returnVisitId" filterable placeholder="--请选择是否回访--">
+                    <el-option
+                            v-for="item in findByVisitId"
+                            :key="item.index"
+                            :label="item.returnVisitFlag"
+                            :value="item.returnVisitId" @click.native="repairFindByVisit(repairSetting.returnVisitFlag)">
+                    </el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="说明" prop="remark">
+                <el-input v-model="repairSetting.remark"></el-input>
+            </el-form-item>
+            <el-form-item>
+                <el-button type="primary" @click="save()" style="text-align: center">保存</el-button>
+                <el-button @click="clearAll()" style="text-align: center">重置</el-button>
+            </el-form-item>
+        </el-form>
+    </div>
+</div>
+<script th:src="@{/lib/layui/layui.js}" charset="utf-8"></script>
+<script th:src="@{/js/x-layui.js}" charset="utf-8"></script>
+<!--导入Vue依赖包-->
+<script th:src="@{/js/vue.js}" charset="utf-8"></script>
+<!-- 引入Element组件库 -->
+<script th:src="@{/js/index.js}"></script>
+<!--导入Axios依赖包-->
+<script th:src="@{/js/axios.js}" charset="utf-8"></script>
+<script type="text/javascript">
+    var app = new Vue({
+        el: "#app",
+        data:{
+            title:"添加报修设置",
+            repairSetting:{settingId:""},
+            fileList:[],
+            findBySettingType: [],
+            findBySendOrdersId:[],
+            findByAreaId:[],
+            findByVisitId:[],
+            rules: {
+                settingId: [
+                    { required: true, message: '请输入工单设置编号', trigger: 'blur' }
+                ],
+                sendOrdersType: [
+                    { required: true, message: '请输入派单类型', trigger: 'blur' }
+                ],
+                repairType: [
+                    { required: true, message: '请输入报修类型', trigger: 'blur' }
+                ]
+            }
+        },
+        methods:{
+            repairFindAllByName() {
+                axios.get("/building/findByCommunityName").then((res) => {
+                    this.findByCommunityName = res.data.data;
+                });
+            },
+            //报修设置类型下拉框
+            repairFindByType() {
+                axios.get("/repairSetting/findBySettingType").then((res) => {
+                    this.findBySettingType = res.data.data;
+                });
+            },
+            //派单方式下拉框
+            repairFindSendOrders(){
+                axios.get("/repairSetting/findBySendOrdersId").then((res) => {
+                    this.findBySendOrdersId = res.data.data;
+                });
+            },
+            //公共区域下拉框
+            repairFindByArea() {
+                axios.get("/repairSetting/findByAreaId").then((res) => {
+                    this.findByAreaId = res.data.data;
+                });
+            },
+            //回访设置下拉框
+            repairFindByVisit(){
+                axios.get("/repairSetting/findByVisitId").then((res) => {
+                    this.findByVisitId = res.data.data;
+                });
+            },
+            findBySettingId(){
+                axios.get("/repairSetting/findBySettingId?settingId="+this.repairSetting.settingId).then((res)=>{
+                    this.repairSetting = res.data.data;
+                });
+            },
+            //表达重置
+            clearAll() {
+                this.$refs.repairSettingFormRef.resetFields();
+                if(this.fileList.length>0) {
+                    this.handleRemove();
+                }
+            },
+            save(){
+                let method = "";
+                if(this.title!="添加报修设置"){
+                    method = "update"
+                }else{
+                    method = "add"
+                }
+                console.log(this.repairSetting.settingId)
+                axios.post("/repairSetting/"+method,this.repairSetting).then((res)=>{
+                    if(res.data.flag){
+                        this.$message({
+                            message: res.data.message,
+                            type: 'success'
+                        });
+                        setTimeout(function(){
+                            window.parent.location.reload();
+                            var index = parent.layer.getFrameIndex(window.name);
+                            parent.layer.close(index);
+                        });
+                        return false;
+                    }
+                });
+
+            },
+            getQueryString(name){
+                let reg = `(^|&)${name}=([^&]*)(&|$)`
+                let r = window.location.search.substr(1).match(reg);
+                if (r != null) return unescape(r[2]); return null;
+            }
+        },
+        created:function(){
+            layui.use(['element','layer','form'], function(){
+                $ = layui.jquery;//jquery
+                lement = layui.element();//面包导航
+                layer = layui.layer;//弹出层
+                form = layui.form();
+                okLoading.close($);
+            });
+            //获取父页面传递参数，小区ID
+            this.repairSetting.settingId = this.getQueryString("settingId");
+            //根据小区ID获取小区对象，进行数据回显
+            if(this.repairSetting.settingId != null && this.repairSetting.settingId != ''){
+                this.title="修改报修设置";
+                this.findBySettingId();
+                console.log(this.findBySettingId())
+            }
+            this.repairFindAllByName();
+            this.repairFindByType();
+            this.repairFindSendOrders();
+            this.repairFindByArea();
+            this.repairFindByVisit();
+        }
+    });
+</script>
+
+</body>
+</html>

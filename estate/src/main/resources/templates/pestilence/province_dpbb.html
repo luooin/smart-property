@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>
+        疫情报表
+    </title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
+    <link rel="stylesheet" th:href="@{/css/main.css}" media="all">
+    <script type="text/javascript" th:src="@{/lib/loading/okLoading.js}"></script>
+    <link rel="stylesheet" th:href="@{/css/bootstrap.css}">
+    <!--导入ElementUI样式列表，css样式一般都在页面头部-->
+    <link rel="stylesheet" th:href="@{/css/index.css}">
+</head>
+<style>
+    .iframe-body-sty {
+        position: relative;
+        overflow: hidden;
+        height: 620px;
+        width: 100%;
+        background-image: linear-gradient(45deg, blue, red);
+        box-shadow: 0 0 5px red, 0 0 15px blue;
+        border-radius: 10px;
+    }
+
+    .iframe-body-sty > #iframe-shrink {
+        position: absolute;
+        transform: scale(0.60);
+        left: -338px;
+        top: -151px;
+    }
+</style>
+<body>
+<!--<div class="x-nav">-->
+<!--            <span class="layui-breadcrumb">-->
+<!--              <a><cite>首页</cite></a>-->
+<!--              <a><cite>疫情管理</cite></a>-->
+<!--              <a><cite>疫情报表</cite></a>-->
+<!--            </span>-->
+<!--</div>-->
+<div class="x-body">
+    <div class="iframe-body-sty">
+        <iframe id="iframe-shrink" src="http://cov.aiiyx.cn" width="1920px" height="920px"></iframe>
+    </div>
+</div>
+<script th:src="@{/lib/layui/layui.js}" charset="utf-8"></script>
+<!--js脚本一般是放在页面尾部-->
+<!--Vue js脚本-->
+<script th:src="@{/js/vue.js}" charset="utf-8"></script>
+<!--引入ElementUI组件库-->
+<script th:src="@{/js/index.js}" charset="utf-8"></script>
+<script>
+    layui.use(['laydate', 'element', 'laypage', 'layer'], function () {
+        $ = layui.jquery;//jquery
+        layer = layui.layer;//弹出层
+        okLoading.close($);
+        layer.ready(function () { //为了layer.ext.js加载完毕再执行
+            layer.photos({
+                photos: '#x-img'
+            });
+        });
+    });
+</script>
+</body>
+</html>

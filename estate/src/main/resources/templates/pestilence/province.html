@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>
+        返省上报
+    </title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
+    <link rel="stylesheet" th:href="@{/css/main.css}" media="all">
+    <script type="text/javascript" th:src="@{/lib/loading/okLoading.js}"></script>
+    <link rel="stylesheet" th:href="@{/css/bootstrap.css}">
+    <!--导入ElementUI样式列表，css样式一般都在页面头部-->
+    <link rel="stylesheet" th:href="@{/css/index.css}">
+</head>
+<body>
+<div class="x-nav">
+            <span class="layui-breadcrumb">
+              <a><cite>首页</cite></a>
+              <a><cite>项目信息</cite></a>
+              <a><cite>返省上报</cite></a>
+            </span>
+    <a class="layui-btn layui-btn-small" style="line-height:1.6em;margin-top:3px;float:right"
+       href="javascript:location.replace(location.href);" title="刷新"><i class="layui-icon"
+                                                                        style="line-height:30px">ဂ</i></a>
+</div>
+<div class="x-body" id="app">
+    <div>
+        <span class="demonstration">时间范围</span>
+        <el-date-picker
+                @change="dateChange"
+                v-model="selectDate"
+                type="daterange"
+                range-separator="-"
+                start-placeholder="开始日期"
+                end-placeholder="结束日期"
+                :picker-options="pickerOptions">
+        </el-date-picker>
+        <span class="demonstration">搜索地址</span>
+        <el-cascader :placeholder="initValue" :props="props" @change="changeValue" clearable></el-cascader>
+        <span class="demonstration">搜索关键字</span>
+        <el-input v-model="searchMap.name" style="width: 20%" placeholder="请输入问卷题目"></el-input>
+        <el-button type="primary" plain @click="searchMap.pageNum=1;search()">搜索</el-button>
+    </div>
+    <br>
+    <xblock>
+        <el-button type="primary" @click="delAll()"><i class="layui-icon">&#xe640;</i>批量删除</el-button>&nbsp;
+        <el-button icon="el-icon-circle-plus" type="primary" @click="admin_add('添加','province_add.html','1000','600')">
+            添加
+        </el-button>
+        <el-button icon="el-icon-s-grid" @click="drawer = true" type="primary" style="margin-left: 16px;">
+            二维码
+        </el-button>
+        <span class="x-right" style="line-height:40px">共有数据：<span class="layui-badge">{{total}}</span> 条</span>
+    </xblock>
+    <el-drawer
+            title="二维码"
+            :visible.sync="drawer"
+            :with-header="false">
+        <h1>外来人员登记</h1>
+        <div class="block">
+            <span class="demonstration">请使用微信扫一扫,登记返省消息!!!</span>
+            <el-image :src="src"></el-image>
+        </div>
+<!--        <span>我来啦!</span>-->
+    </el-drawer>
+    <table class="layui-table">
+        <thead>
+        <tr>
+            <th>
+                <input type="checkbox" id="allChecked" :checked="checkedIDs.length===provinceList.length"
+                       @click="allChecked">
+            </th>
+            <th>
+                返省信息ID
+            </th>
+            <th>
+                姓名
+            </th>
+            <th>
+                身份证
+            </th>
+            <th>
+                手机号
+            </th>
+            <th>
+                省市区
+            </th>
+            <th>
+                返回时间
+            </th>
+            <th>
+                操作
+            </th>
+        </tr>
+        </thead>
+        <tbody id="x-img">
+        <tr v-for="(province,index) in provinceList">
+            <td>
+                <input type="checkbox" :id="'id'+province.id" :value="province.id" v-model="checkedIDs">
+            </td>
+            <td>{{province.id}}</td>
+            <td>{{province.name}}</td>
+            <td>{{province.idCard}}</td>
+            <td>{{province.phone}}</td>
+            <td>{{initProvince(province.province)}}</td>
+            <td>{{dateFormat(province.returnTime)}}</td>
+            <td class="td-manage">
+                <a title="编辑" href="javascript:;"
+                   @click="building_edit('编辑','province_add.html',province.id,'1000','600')"
+                   class="ml-5" style="text-decoration:none">
+                    <i class="layui-icon">&#xe642;</i>
+                </a>
+                <a title="删除" href="javascript:;" @click="del_one(province.id)"
+                   style="text-decoration:none">
+                    <i class="layui-icon">&#xe640;</i>
+                </a>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+    <el-pagination
+            background
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+            :page-size="searchMap.pageSize"
+            layout="prev, pager, next,sizes"
+            :page-sizes="[3,10,20]"
+            style="text-align: right;"
+            :total="total">
+    </el-pagination>
+</div>
+<script th:src="@{/lib/layui/layui.js}" charset="utf-8"></script>
+<script th:src="@{/js/main.js}"></script>
+<script th:src="@{/js/jquery.min.js}"></script>
+<script th:src="@{/js/x-layui.js}" charset="utf-8"></script>
+<!--js脚本一般是放在页面尾部-->
+<!--Vue js脚本-->
+<script th:src="@{/js/vue.js}" charset="utf-8"></script>
+<!--引入ElementUI组件库-->
+<script th:src="@{/js/index.js}" charset="utf-8"></script>
+<!--引入Axios js脚本-->
+<script th:src="@{/js/axios.js}" charset="utf-8"></script>
+<!--引入时间插件包Momentjs-->
+<script th:src="@{/js/moment.min.js}" charset="utf-8"></script>
+<script>
+    var app = new Vue({
+        el: "#app",//声明当前Vue在页面的作用域
+        data: {
+            drawer: false,
+            initValue:"请选择省市区",
+            src: 'data:image/png;base64,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',
+            props: {
+                // value:"code",
+                // label:"name",
+                lazy: true,
+                lazyLoad(node, resolve) {
+                    const level = node.level;
+                    // console.log(node)
+                    const requestDate = {};
+                    //省份
+                    if (level === 0) {
+                        requestDate.type = "province";
+                    }
+                    if (level === 1) {
+                        requestDate.type = "city";
+                        requestDate.province_code = node.value;
+                    }
+                    if (level === 2) {
+                        requestDate.type = "area";
+                        requestDate.city_code = node.value;
+                    }
+                    //省市区的接口
+                    axios.post("/address/find", requestDate).then((res) => {
+                        // console.log(res.data.data)
+                        const data = res.data.data;
+                        data.forEach(itme => {
+                            itme.value = itme.code;
+                            itme.label = itme.name;
+                            itme.leaf = level >= 2;
+                        })
+                        //返回节点数据
+                        resolve(data);
+                        //如果后端的数据库字段不是code和name那么要使用一下方法
+                        // if(level===0){
+                        //     data.forEach(itme=>{
+                        //         itme.value=itme.code;
+                        //         itme.label=itme.name;
+                        //     })
+                        // }
+                        // if(level===1){
+                        //     data.forEach(itme=>{
+                        //         itme.value=itme.code1;
+                        //         itme.label=itme.name1;
+                        //     })
+                        // }
+                    });
+                },
+            },
+            checkedIDs: [],
+            provinceList: [{id: ''}],
+            cityAreaValue:{
+                type:String ,
+                default:""
+            },
+            total: 10,
+            searchMap: {"startTime": "", "endTime": "", "name": "", "pageNum": 1, "pageSize": 3,"area":""},
+            selectDate: ['', ''],
+            pickerOptions: {
+                shortcuts: [{
+                    text: '最近一周',
+                    onClick(picker) {
+                        const end = new Date();
+                        const start = new Date();
+                        start.setTime(start.getTime() - 3600 * 1000 * 24 * 7);
+                        picker.$emit('pick', [start, end]);
+                    }
+                }, {
+                    text: '最近一个月',
+                    onClick(picker) {
+                        const end = new Date();
+                        const start = new Date();
+                        start.setTime(start.getTime() - 3600 * 1000 * 24 * 30);
+                        picker.$emit('pick', [start, end]);
+                    }
+                }, {
+                    text: '最近三个月',
+                    onClick(picker) {
+                        const end = new Date();
+                        const start = new Date();
+                        start.setTime(start.getTime() - 3600 * 1000 * 24 * 90);
+                        picker.$emit('pick', [start, end]);
+                    }
+                }]
+            }
+        },
+        methods: {
+            initProvince(value){
+                return value.split(",").join(" / ");
+            },
+            changeValue(value){
+                this.searchMap.area=value.join(",")
+                console.log(this.searchMap.area)
+            },
+            search() {
+                axios.post("/province/search", this.searchMap
+                ).then((res) => {
+                    app.provinceList = res.data.data;
+                    app.total = res.data.total;
+                });
+            },
+            //单个删除
+            del_one(id) {
+                this.$confirm('请问您是否要删除该小区信息?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    //把选中的ID封装到集合中
+                    this.checkedIDs.push(id);
+                    //执行删除操作
+                    axios.post("/province/del", this.checkedIDs).then((res) => {
+                        if (res.data.flag) {
+                            this.$message({
+                                type: 'success',
+                                message: '删除成功!'
+                            });
+                        }
+                        //删除成功，把选中的ID列表置为空
+                        this.checkedIDs = [];
+                        //把页面置为1，重新获取列表数据
+                        this.searchMap.pageNum = 1;
+                        this.search();
+                    });
+
+                }).catch(() => {
+                    this.$message({
+                        type: 'info',
+                        message: '已取消删除'
+                    });
+                });
+            },
+            //多选删除
+            delAll() {
+                this.$confirm('请问您是否要删除选中小区信息?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    //执行删除操作
+                    axios.post("/province/del", this.checkedIDs).then((res) => {
+                        if (res.data.flag) {
+                            this.$message({
+                                type: 'success',
+                                message: '删除成功!'
+                            });
+                        }
+                        //删除成功，把选中的ID列表置为空
+                        this.checkedIDs = [];
+                        //把页面置为1，重新获取列表数据
+                        this.searchMap.pageNum = 1;
+                        this.search();
+                    });
+                }).catch(() => {
+                    this.$message({
+                        type: 'info',
+                        message: '已取消删除'
+                    });
+                });
+            },
+            urlImg(url) {
+                return "http://localhost" + url;
+            },
+            //全选、全不选方法
+            allChecked: function () {
+                if (this.checkedIDs.length === this.provinceList.length) {
+                    // 全不选
+                    this.checkedIDs = [];
+
+                } else {
+                    this.checkedIDs = [];
+                    // 全选
+                    this.provinceList.forEach((item) => {
+                        this.checkedIDs.push(item.id); // 与checkbox的value统一
+                    })
+                }
+            },
+            //handleSizeChange每页数量发生变化后触发的方法
+            handleSizeChange(pageSize) {
+                this.searchMap.pageSize = pageSize;
+                this.search();
+            },
+            //handleCurrentChange页码变化触发方法
+            handleCurrentChange(pageNum) {
+                this.searchMap.pageNum = pageNum;
+                this.search();
+            },
+            //时间区间发生改变，searcHMap中时间区间条件也要变化
+            dateChange() {
+                //没有选择时间区间或者清理时间条件，当前时间区间为空字符串
+                if (this.selectDate == null || this.selectDate.length == 0) {
+                    this.searchMap.startTime = '';
+                    this.searchMap.endTime = '';
+                } else {
+                    //当时间区间不为空，往searchMap中添加条件
+                    if (this.selectDate[0] != null && this.selectDate[0] != '') {
+                        this.searchMap.startTime = this.dateFormat(this.selectDate[0]);
+
+                    }
+                    if (this.selectDate[1] != null && this.selectDate[1] != '') {
+                        this.searchMap.endTime = this.dateFormat(this.selectDate[1]);
+                    }
+                }
+
+            },
+            //日期格式化方法
+            //date 要进行格式的日期 ；format 格式化的样式
+            dateFormat(date, format) {
+                //默认格式化字符串"YYYY-MM-DD HH:mm:ss"
+                if (format == null || format == '') {
+                    format = "YYYY-MM-DD HH:mm:ss";
+                }
+                return moment(date).format(format);
+            },
+            /*添加*/
+            admin_add(title, url, w, h) {
+                this.x_admin_show(title, url, w, h);
+            },
+            //编辑
+            building_edit(title, url, id, w, h) {
+                url = url + "?id=" + id;
+                this.x_admin_show(title, url, w, h);
+            },
+            /*弹出层*/
+            /*
+                参数解释：
+                title	标题
+                url		请求的url
+                id		需要操作的数据id
+                w		弹出层宽度（缺省调默认值）
+                h		弹出层高度（缺省调默认值）
+            */
+            x_admin_show(title, url, width, height) {
+                if (title == null || title == '') {
+                    title = false;
+                }
+                ;
+                if (url == null || url == '') {
+                    url = "404.html";
+                }
+                ;
+                if (width == null || width == '') {
+                    width = $(window).width();
+                }
+                ;
+                if (height == null || height == '') {
+                    height = ($(window).height() - 50);
+                }
+                ;
+
+                layer.open({
+                    type: 2,
+                    area: [width + 'px', height + 'px'],
+                    fix: false, //不固定
+                    maxmin: true,
+                    shadeClose: true,
+                    shade: 0.4,
+                    title: title,
+                    content: url,
+                    cancel: function (index, layero) {
+                        //使用右上角x关闭弹窗层，回调方法，重新加载页面数据，让修改或者新增的数据立马显示在页面上
+                        app.search();
+                    }
+                });
+            },
+            /*关闭弹出框口*/
+            x_admin_close() {
+                var index = parent.layer.getFrameIndex(window.name);
+                parent.layer.close(index);
+            }
+        },
+        created: function () {//Vue生命周期方法，加载页面时会执行该方法
+            layui.use(['laydate', 'element', 'laypage', 'layer'], function () {
+                $ = layui.jquery;//jquery
+                layer = layui.layer;//弹出层
+                okLoading.close($);
+                layer.ready(function () { //为了layer.ext.js加载完毕再执行
+                    layer.photos({
+                        photos: '#x-img'
+                    });
+                });
+            })
+            //初始页面获取小区列表信息
+            this.search();
+        }
+    });
+
+</script>
+
+</body>
+</html>
